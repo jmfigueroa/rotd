@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROTD PSS Score Entry",
+  "description": "Schema for Progress Scoring System entries in pss_scores.jsonl",
+  "type": "object",
+  "required": ["task_id", "score", "timestamp", "criteria"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Task identifier matching tasks.jsonl"
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Total PSS score out of 10"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of scoring"
+    },
+    "criteria": {
+      "type": "object",
+      "required": [
+        "llm_engaged", "compiles", "core_impl", 
+        "tests_written", "tests_pass", "doc_maintained", 
+        "stub_free", "history_maintained", "qts_floor", "qts_ratchet"
+      ],
+      "properties": {
+        "llm_engaged": { "$ref": "#/definitions/criterion" },
+        "compiles": { "$ref": "#/definitions/criterion" },
+        "core_impl": { "$ref": "#/definitions/criterion" },
+        "tests_written": { "$ref": "#/definitions/criterion" },
+        "tests_pass": { "$ref": "#/definitions/criterion" },
+        "doc_maintained": { "$ref": "#/definitions/criterion" },
+        "stub_free": { "$ref": "#/definitions/criterion" },
+        "history_maintained": { "$ref": "#/definitions/criterion" },
+        "qts_floor": { "$ref": "#/definitions/criterion" },
+        "qts_ratchet": { "$ref": "#/definitions/criterion" }
+      }
+    }
+  },
+  "definitions": {
+    "criterion": {
+      "type": "object",
+      "required": ["score", "rationale"],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Binary score for this criterion"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explanation for the score"
+        }
+      }
+    }
+  }
+}
