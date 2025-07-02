@@ -114,13 +114,12 @@ rotd show-lessons --tag=testing    # Recent lessons
 This session should leave the project *cleaner*, not just bigger.
 
 ROTD = Runtime-Oriented Test Discipline. Stay compliant. Use the CLI.
-```
 
 ## 🔄 Resume ROTD-guided development (Manual)
 
 Use this prompt when continuing work without CLI:
 
-```
+~~~markdown
 This is NOT a new project session — you are continuing an active ROTD-compliant project where prior tasks have been worked on and artifacts were generated.
 
 Before continuing development:
@@ -148,13 +147,13 @@ Parse `.rotd/pss_scores.jsonl` to:
 This session should leave the project *cleaner*, not just bigger.
 
 ROTD = Runtime-Oriented Test Discipline. Stay compliant.
-```
+~~~
 
 ## 🔄 Convert Existing Project to ROTD (CLI-enabled)
 
 Use this prompt to migrate an existing codebase into ROTD using the CLI:
 
-```
+~~~markdown
 You are converting an existing software project to use Runtime-Oriented Test Discipline (ROTD). This project was not originally structured for ROTD, but you will now retroactively bring it into compliance using the `rotd` CLI.
 
 🔧 **Migration Steps**:
@@ -192,13 +191,13 @@ You are converting an existing software project to use Runtime-Oriented Test Dis
 - Summarize any critical lessons learned from retroactive import
 
 This is a structural conversion. Going forward, all development MUST follow ROTD compliance, using CLI commands only.
-```
+~~~
 
 ## 🔄 Convert Existing Project to ROTD (Manual)
 
 Use this prompt to migrate an existing codebase to the ROTD structure manually:
 
-```
+~~~markdown
 You are converting an existing project into a Runtime-Oriented Test Discipline (ROTD) environment. This project was not originally developed under ROTD, but you will now retroactively align it with ROTD principles and artifact formats.
 
 📁 **Directory Setup**:
@@ -255,7 +254,7 @@ Once the conversion is complete, summarize:
 - Whether the project is now ready to proceed under strict ROTD rules
 
 From this point forward, the project MUST follow the ROTD discipline: structured tasks, runtime-validated progress, and complete artifact tracking.
-```
+~~~
 
 
 ## 🎯 ROTD Preamble (CLI-enabled)
