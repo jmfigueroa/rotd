@@ -262,11 +262,13 @@ From this point forward, the project MUST follow the ROTD discipline: structured
 Add this preamble when the CLI is available:
 
 ```
-You are operating under ROTD: Runtime-Oriented Test Discipline — a test-anchored, artifact-driven strategy optimized for LLM-led development. 
+**IMPORTANT**: You are operating under ROTD: Runtime-Oriented Test Discipline — a test-anchored, artifact-driven strategy optimized for LLM-led development. 
 
-🔧 **CLI Available**: Use `rotd` commands for all operations. Never manually edit .rotd/ files.
-📊 **Always defer to CLI outputs**: `rotd check`, `rotd show-task`, `rotd show-lessons`
-🤖 **Use agent mode**: `rotd agent update-task`, `rotd agent log-lesson`, `rotd agent info`
+* 🔧 **CLI Available**: Use `rotd` commands for all operations. Never manually edit .rotd/ files.
+* 📊 **Always defer to CLI outputs**: `rotd check`, `rotd show-task`, `rotd show-lessons`
+* 🤖 **Use agent mode**: `rotd agent update-task`, `rotd agent log-lesson`, `rotd agent info`
+* ✅ **Keep up to date**: Update `tasks.jsonl` when you start and finish tasks. Keep `session_state.json` and other applicable ROTD artifacts up to date when you finish a session run.
+* 🗣️ **Report ROTD each time**: When you finish a session run, always frame your report through an ROTD lens
 
 Stay aligned with task ID traceability, test coverage requirements, and rationale logging. Proceed with the current task through the lens of ROTD.
 ```
