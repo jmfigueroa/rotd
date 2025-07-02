@@ -4,6 +4,19 @@
 
 ## Quick Start
 
+### Option 1: CLI Installation (Recommended)
+```bash
+# Install ROTD CLI
+curl -sSL https://raw.githubusercontent.com/jmfigueroa/rotd/main/scripts/install.sh | bash
+
+# Initialize project
+rotd init
+
+# Check compliance
+rotd check
+```
+
+### Option 2: Manual Setup
 1. **Initialize** your project with a `.rotd/` directory
 2. **Track tasks** in `.rotd/tasks.jsonl` 
 3. **Write tests** before marking tasks complete
@@ -23,10 +36,16 @@ ROTD is designed for LLM-assisted development where:
 
 ## Core Files
 
-- **[ROTD.md](./ROTD.md)** - Complete methodology documentation
+- **[docs/ROTD.md](./docs/ROTD.md)** - Complete methodology documentation
 - **[examples/](./examples/)** - Annotated JSON examples from real projects
 - **[schema/](./schema/)** - JSON schemas for validation
-- **[pss_score.py](./pss_score.py)** - Portable PSS scoring script
+- **[scripts/pss_score.py](./scripts/pss_score.py)** - Portable PSS scoring script
+- **[docs/prompts.md](./docs/prompts.md)** - LLM prompts for CLI-enabled and manual workflows
+- **[src/](./src/)** - Rust CLI utility source code
+- **[scripts/install.sh](./scripts/install.sh)** - One-line installation script
+- **[docs/README_CLI.md](./docs/README_CLI.md)** - Complete CLI documentation
+- **[docs/AGENT_USAGE.md](./docs/AGENT_USAGE.md)** - Quick reference for LLM agents
+- **[docs/CLI_COMMANDS.md](./docs/CLI_COMMANDS.md)** - Command reference and examples
 
 ## Key Principles
 
@@ -58,11 +77,24 @@ ROTD includes a 10-point scoring system evaluating:
 3. **Cleanup Discipline (7-8)**: Stub-free code, documentation
 4. **Historical Continuity (9-10)**: Artifacts maintained, lessons logged
 
-Score tasks with: `python .rotd/pss_score.py <task_id>`
+Score tasks with: `rotd score <task_id>` (CLI) or `python scripts/pss_score.py <task_id>` (manual)
 
 ## For LLM Agents
 
-ROTD provides structure without rigidity:
+ROTD provides structure without rigidity with **two operational modes**:
+
+### CLI-Enabled Mode (Recommended)
+- **Use CLI commands**: `rotd agent update-task`, `rotd check`, `rotd show-lessons`
+- **Automated validation**: Schema enforcement and audit logging
+- **Structured operations**: JSON input/output for programmatic use
+- **Safety features**: Dry-run mode and validation checks
+
+### Manual Mode (Fallback)  
+- **Direct file editing**: When CLI is unavailable
+- **Manual validation**: Self-managed artifact integrity
+- **Compatible**: Works with existing ROTD projects
+
+**Key Benefits:**
 - **Explore freely** during implementation
 - **Test thoroughly** before claiming completion  
 - **Score systematically** for project health
@@ -82,4 +114,98 @@ Perfect for hybrid human-AI development teams.
 
 ---
 
-**Getting Started**: Read [ROTD.md](./ROTD.md) for complete documentation and implementation details.
+## Getting Started
+
+### Quick Start with CLI
+```bash
+# Install CLI
+curl -sSL https://raw.githubusercontent.com/jmfigueroa/rotd/main/scripts/install.sh | bash
+
+# Initialize project
+rotd init
+
+# Use CLI-enabled prompts from docs/prompts.md
+```
+
+### Manual Setup
+```bash
+# Create directory structure manually
+mkdir -p .rotd/test_summaries
+# Copy files from examples/ directory
+# Use manual prompts from docs/prompts.md
+```
+
+**Complete Documentation**: Read [docs/ROTD.md](./docs/ROTD.md) for methodology details and [docs/README_CLI.md](./docs/README_CLI.md) for CLI usage.
+
+## 🏗️ Repository Structure
+
+```
+rotd/
+├── 📄 Essential Files (Root)
+│   ├── README.md             # Project overview and quick start
+│   ├── Cargo.toml            # Rust project configuration  
+│   ├── LICENSE               # MIT license
+│   ├── Makefile              # Build and development commands
+│   ├── rustfmt.toml          # Code formatting rules
+│   └── .gitignore            # Version control exclusions
+│
+├── 📚 Documentation
+│   └── docs/
+│       ├── ROTD.md           # Complete methodology documentation
+│       ├── README_CLI.md     # CLI utility documentation
+│       ├── AGENT_USAGE.md    # Quick reference for LLM agents
+│       ├── CLI_COMMANDS.md   # Command reference and examples
+│       ├── prompts.md        # LLM prompts (CLI-enabled & manual)
+│       ├── CONTRIBUTING.md   # Contribution guidelines
+│       └── CHANGELOG.md      # Version history
+│
+├── 🛠️ CLI Source Code
+│   └── src/
+│       ├── main.rs           # CLI entry point and argument parsing
+│       ├── agent.rs          # Agent mode commands (JSON I/O)
+│       ├── human.rs          # Human mode commands (interactive)
+│       ├── schema.rs         # Data structures and validation
+│       ├── fs_ops.rs         # File operations and safety
+│       ├── pss.rs            # Progress Scoring System
+│       ├── audit.rs          # Audit logging
+│       └── common.rs         # Shared utilities
+│
+├── 🚀 Scripts & Tools
+│   └── scripts/
+│       ├── install.sh        # One-line installation script
+│       └── pss_score.py      # Portable Python scoring script
+│
+├── 📊 Examples & Schemas
+│   ├── examples/             # Real ROTD artifacts from projects
+│   │   ├── tasks.jsonl       # Example task entries
+│   │   ├── pss_score.jsonl   # Example PSS scores
+│   │   ├── lessons_learned.jsonl # Example lessons
+│   │   └── test_summary.json # Example test results
+│   └── schema/               # JSON schemas for validation
+│       ├── task.schema.json  # Task entry schema
+│       └── pss_score.schema.json # PSS score schema
+│
+└── 🧪 Testing & CI
+    ├── tests/
+    │   └── integration_test.rs # CLI integration tests
+    └── .github/workflows/
+        ├── ci.yml            # Continuous integration
+        └── release.yml       # Automated releases
+```
+
+### 📁 Key Directories
+
+- **`docs/`**: All documentation and guides
+- **`src/`**: Rust CLI source code with modular architecture  
+- **`scripts/`**: Installation and utility scripts
+- **`examples/`**: Real-world ROTD artifacts for reference
+- **`schema/`**: JSON schemas for validation and tooling
+- **`tests/`**: Integration tests and test utilities
+- **`.github/`**: CI/CD pipelines and GitHub configuration
+
+### 🎯 Design Philosophy
+
+- **Clean root**: Only essential build/config files at project root
+- **Organized by purpose**: Documentation, source code, scripts, examples in separate directories
+- **Easy navigation**: Clear directory structure with descriptive names
+- **Maintainable**: Logical grouping reduces cognitive load
