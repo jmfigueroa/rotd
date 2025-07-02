@@ -212,7 +212,7 @@ pub fn score(task_id: &str, format: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn check(fix: bool) -> Result<()> {
+pub fn check(_fix: bool) -> Result<()> {
     check_rotd_initialized()?;
 
     let mut issues = Vec::new();

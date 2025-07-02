@@ -1,6 +1,5 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use colored::*;
 
 mod agent;
 mod audit;

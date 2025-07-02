@@ -1,6 +1,5 @@
 use anyhow::Result;
 use colored::*;
-use std::collections::HashMap;
 
 use crate::audit;
 use crate::common::check_rotd_initialized;
@@ -56,9 +55,9 @@ pub fn init(force: bool, dry_run: bool, verbose: bool) -> Result<()> {
 
     println!();
     println!("{}", "🚀 Next steps:".bold());
-    println!("  1. Add your first task: {}", "echo '{{\"id\":\"1.1\",\"title\":\"Initial setup\",\"status\":\"pending\"}}' >> .rotd/tasks.jsonl".dim());
-    println!("  2. Check compliance: {}", "rotd check".dim());
-    println!("  3. Read methodology: {}", "cat .rotd/ROTD.md".dim());
+    println!("  1. Add your first task: {}", "echo '{{\"id\":\"1.1\",\"title\":\"Initial setup\",\"status\":\"pending\"}}' >> .rotd/tasks.jsonl".dimmed());
+    println!("  2. Check compliance: {}", "rotd check".dimmed());
+    println!("  3. Read methodology: {}", "cat .rotd/ROTD.md".dimmed());
 
     Ok(())
 }
@@ -105,7 +104,7 @@ pub fn show_task(task_id: &str, verbose: bool) -> Result<()> {
 
             if verbose {
                 println!();
-                println!("{}", "Detailed Information:".bold().underlined());
+                println!("{}", "Detailed Information:".bold().underline());
                 
                 if let Some(created) = &t.created {
                     println!("{} {}", "Created:".bold(), created.format("%Y-%m-%d %H:%M UTC"));
@@ -120,7 +119,7 @@ pub fn show_task(task_id: &str, verbose: bool) -> Result<()> {
                 if summary_path.exists() {
                     if let Ok(summary) = read_json::<TestSummary>(&summary_path) {
                         println!();
-                        println!("{}", "Test Summary:".bold().underlined());
+                        println!("{}", "Test Summary:".bold().underline());
                         println!("  {}: {}/{}", "Results".bold(), summary.passed, summary.total_tests);
                         if let Some(coverage) = summary.coverage {
                             println!("  {}: {:.1}%", "Coverage".bold(), coverage * 100.0);
@@ -153,7 +152,7 @@ pub fn show_lessons(tag_filter: Option<&str>, verbose: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{}", "Lessons Learned".bold().underlined());
+    println!("{}", "Lessons Learned".bold().underline());
     println!();
 
     for lesson in filtered_lessons {
@@ -162,7 +161,7 @@ pub fn show_lessons(tag_filter: Option<&str>, verbose: bool) -> Result<()> {
         println!("{} {}", "Remediation:".bold(), lesson.remediation.green());
         
         if !lesson.tags.is_empty() {
-            println!("{} {}", "Tags:".bold(), lesson.tags.join(", ").dim());
+            println!("{} {}", "Tags:".bold(), lesson.tags.join(", ").dimmed());
         }
 
         if verbose {
@@ -191,7 +190,7 @@ pub fn show_audit(limit: usize, verbose: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{}", "Recent Audit Log".bold().underlined());
+    println!("{}", "Recent Audit Log".bold().underline());
     println!();
 
     for line in log_lines.iter().rev() {
@@ -204,7 +203,7 @@ pub fn show_audit(limit: usize, verbose: bool) -> Result<()> {
 pub fn check(fix: bool, verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
 
-    println!("{}", "ROTD Compliance Check".bold().underlined());
+    println!("{}", "ROTD Compliance Check".bold().underline());
     println!();
 
     let mut issues = Vec::new();
@@ -281,7 +280,7 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
 }
 
 pub fn completions(shell: &str) -> Result<()> {
-    use clap::{Command, CommandFactory};
+    use clap::Command;
     use clap_complete::{generate, Shell};
     use std::io;
 
@@ -413,7 +412,7 @@ fn print_score_table(scores: &[PSSScore], verbose: bool) {
         return;
     }
 
-    println!("{}", "ROTD Progress Scores".bold().underlined());
+    println!("{}", "ROTD Progress Scores".bold().underline());
     println!();
 
     // Header
@@ -484,6 +483,6 @@ fn print_audit_line(line: &str, verbose: bool) {
     } else if line.contains("[INFO]") {
         println!("  {}", line.white());
     } else {
-        println!("  {}", line.dim());
+        println!("  {}", line.dimmed());
     }
 }
