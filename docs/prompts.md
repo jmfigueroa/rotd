@@ -150,6 +150,114 @@ This session should leave the project *cleaner*, not just bigger.
 ROTD = Runtime-Oriented Test Discipline. Stay compliant.
 ```
 
+## 🔄 Convert Existing Project to ROTD (CLI-enabled)
+
+Use this prompt to migrate an existing codebase into ROTD using the CLI:
+
+```
+You are converting an existing software project to use Runtime-Oriented Test Discipline (ROTD). This project was not originally structured for ROTD, but you will now retroactively bring it into compliance using the `rotd` CLI.
+
+🔧 **Migration Steps**:
+1. **Initialize** the ROTD structure:
+   ```bash
+   rotd init
+   ```
+
+2. **Enumerate key tasks** in the current project and log them:
+   - Use `rotd task new` or `rotd agent update-task` to create entries in `tasks.jsonl`
+   - For each existing feature, create a scaffolded or complete task
+
+3. **Backfill test results**:
+   - Add test outputs to `.rotd/test_summaries/` with `rotd agent append-summary`
+   - Use real test results when possible
+
+4. **Retro-score recent tasks**:
+   - Run `rotd --agent score <task_id>` to assign initial scores
+   - Edit rationale fields to explain retroactive judgments
+
+5. **Log prior lessons**:
+   - Add failure insights from project history to `lessons_learned.jsonl`
+   - Use `rotd agent log-lesson` for proper formatting
+
+6. **Audit hygiene**:
+   - Review and log any code hygiene issues (e.g., TODOs, stubs) with `rotd agent log-violation`
+
+7. **Snapshot session state**:
+   - Set up `session_state.json` to track current task for LLM context
+
+🧠 **Report when finished**:
+- List how many tasks were added
+- What the overall test coverage appears to be
+- How many scores were recorded and what the score range is
+- Summarize any critical lessons learned from retroactive import
+
+This is a structural conversion. Going forward, all development MUST follow ROTD compliance, using CLI commands only.
+```
+
+## 🔄 Convert Existing Project to ROTD (Manual)
+
+Use this prompt to migrate an existing codebase to the ROTD structure manually:
+
+```
+You are converting an existing project into a Runtime-Oriented Test Discipline (ROTD) environment. This project was not originally developed under ROTD, but you will now retroactively align it with ROTD principles and artifact formats.
+
+📁 **Directory Setup**:
+- Create a `.rotd/` directory at the project root
+- Inside `.rotd/`, create the following files and folders if they don’t exist:
+  - `tasks.jsonl` (append-only list of all tracked tasks)
+  - `test_summaries/` (a folder with one JSON file per task containing test results)
+  - `lessons_learned.jsonl` (append-only log of failure patterns and remediations)
+  - `pss_scores.jsonl` (append-only list of progress scores with rationale)
+  - `session_state.json` (JSON object with the current task, timestamp, and optional notes)
+  - `coverage_history.json` (for tracking test coverage over time)
+  - `audit.log` (text file for manual logging of stubs, violations, and policy exceptions)
+
+🧭 **Conversion Steps**:
+1. **List Known Tasks**:
+   - Review the project’s features and modules
+   - Manually enter each as an object into `tasks.jsonl` using JSONL format
+     ```json
+     {"id":"1.1","title":"User login flow","status":"complete"}
+     ```
+
+2. **Document Test Results**:
+   - For each completed feature, record test pass/fail data in a JSON file under `test_summaries/`
+   - Use `{task_id}.json` naming (e.g., `test_summaries/1.1.json`)
+   - Include total/pass/fail counts and notes if tests do not exist
+
+3. **Score the Work**:
+   - For each task, assign a Progress Scoring System (PSS) score out of 10
+   - Append the result to `pss_scores.jsonl`:
+     ```json
+     {"task_id":"1.1","score":8,"rationale":{"compiles":true,"core_complete":true,"tests_written":true,...}}
+     ```
+
+4. **Log Lessons**:
+   - Identify past project issues and add them to `lessons_learned.jsonl` with root cause and fix
+   - Include tags and affected components for reuse
+
+5. **Set Up Session State**:
+   - Create or update `session_state.json` to indicate the current task ID and timestamp:
+     ```json
+     {"current_task_id":"1.2","resumed":"2025-07-02T15:30:00Z"}
+     ```
+
+6. **Audit Artifacts**:
+   - Create a text-based `audit.log` listing stubs, `TODO` markers, or other incomplete work
+   - Use it to track ROTD violations or exemptions going forward
+
+📋 **Final Report**:
+Once the conversion is complete, summarize:
+- How many tasks were created
+- How many test summaries were backfilled
+- The average and median PSS scores
+- Key failure patterns identified
+- Whether the project is now ready to proceed under strict ROTD rules
+
+From this point forward, the project MUST follow the ROTD discipline: structured tasks, runtime-validated progress, and complete artifact tracking.
+```
+
+
 ## 🎯 ROTD Preamble (CLI-enabled)
 
 Add this preamble when the CLI is available:
