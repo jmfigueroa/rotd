@@ -29,10 +29,12 @@ pub fn log_info(task_id: Option<&str>, rule: &str, message: &str) -> Result<()> 
     log_violation(task_id, rule, "info", message)
 }
 
+#[allow(dead_code)]
 pub fn log_warning(task_id: Option<&str>, rule: &str, message: &str) -> Result<()> {
     log_violation(task_id, rule, "warning", message)
 }
 
+#[allow(dead_code)]
 pub fn log_error(task_id: Option<&str>, rule: &str, message: &str) -> Result<()> {
     log_violation(task_id, rule, "error", message)
 }

@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::fs;
 use tempfile::TempDir;
 
 #[test]
@@ -90,7 +89,7 @@ fn test_agent_update_task_invalid_json() {
         .write_stdin("invalid json")
         .assert()
         .failure()
-        .stdout(predicate::str::contains("invalid_json"));
+        .stderr(predicate::str::contains("invalid_json"));
 }
 
 #[test]

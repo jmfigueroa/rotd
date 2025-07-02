@@ -204,9 +204,24 @@ pub fn check_stubs_remaining() -> bool {
             if let Some(ext) = entry.path().extension() {
                 if matches!(ext.to_str(), Some("rs") | Some("ts") | Some("tsx") | Some("js") | Some("jsx")) {
                     if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                        for pattern in &stub_patterns {
-                            if content.contains(pattern) {
-                                return true;
+                        // Skip checking this file's pattern definition line
+                        if entry.path().ends_with("pss.rs") {
+                            // Check for stubs but exclude the pattern definition line
+                            for (_line_num, line) in content.lines().enumerate() {
+                                if line.contains("let stub_patterns") {
+                                    continue;
+                                }
+                                for pattern in &stub_patterns {
+                                    if line.contains(pattern) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        } else {
+                            for pattern in &stub_patterns {
+                                if content.contains(pattern) {
+                                    return true;
+                                }
                             }
                         }
                     }

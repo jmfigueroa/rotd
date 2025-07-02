@@ -212,12 +212,13 @@ pub fn score(task_id: &str, format: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn check(_fix: bool) -> Result<()> {
+pub fn check(fix: bool) -> Result<()> {
     check_rotd_initialized()?;
 
     let mut issues = Vec::new();
     let mut score = 0;
     let total_checks = 5;
+    let mut fixed = Vec::new();
 
     // Check 1: Required files exist
     let required_files = [
@@ -272,10 +273,59 @@ pub fn check(_fix: bool) -> Result<()> {
         issues.push("invalid_session_state");
     }
 
+    // Apply fixes if requested
+    if fix && !issues.is_empty() {
+        for issue in &issues {
+            match *issue {
+                "missing_required_files" => {
+                    // Create missing files
+                    for file_path in &required_files {
+                        if !file_path.exists() {
+                            match file_path.file_name().and_then(|f| f.to_str()) {
+                                Some("session_state.json") => {
+                                    let session_state = SessionState {
+                                        session_id: "fix".to_string(),
+                                        timestamp: chrono::Utc::now(),
+                                        current_task: None,
+                                        status: "initialized".to_string(),
+                                        deltas: None,
+                                    };
+                                    if write_json(file_path, &session_state).is_ok() {
+                                        fixed.push("created_session_state");
+                                    }
+                                }
+                                Some("coverage_history.json") => {
+                                    let coverage_history = CoverageHistory {
+                                        floor: 70.0,
+                                        ratchet_threshold: 3.0,
+                                        history: Vec::new(),
+                                    };
+                                    if write_json(file_path, &coverage_history).is_ok() {
+                                        fixed.push("created_coverage_history");
+                                    }
+                                }
+                                Some("tasks.jsonl") => {
+                                    // Create empty file
+                                    if std::fs::File::create(file_path).is_ok() {
+                                        fixed.push("created_tasks_file");
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    // Other issues cannot be auto-fixed
+                }
+            }
+        }
+    }
+
     let health_percentage = (score as f64 / total_checks as f64) * 100.0;
 
-    println!("{{\"health_score\":{},\"total_checks\":{},\"passed\":{},\"issues\":{:?},\"health_percentage\":{:.1}}}", 
-        score, total_checks, score, issues, health_percentage);
+    println!("{{\"passed\":{},\"total_checks\":{},\"issues\":{:?},\"fixed\":{:?},\"health_percentage\":{:.1}}}", 
+        score, total_checks, issues, fixed, health_percentage);
 
     Ok(())
 }

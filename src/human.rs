@@ -200,7 +200,7 @@ pub fn show_audit(limit: usize, verbose: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn check(fix: bool, verbose: bool) -> Result<()> {
+pub fn check(fix: bool, _verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
 
     println!("{}", "ROTD Compliance Check".bold().underline());
@@ -474,7 +474,7 @@ fn get_status_from_score(score: u32) -> &'static str {
     }
 }
 
-fn print_audit_line(line: &str, verbose: bool) {
+fn print_audit_line(line: &str, _verbose: bool) {
     // Parse and colorize audit log lines
     if line.contains("[ERROR]") {
         println!("  {}", line.red());
