@@ -86,6 +86,39 @@ enum Commands {
         /// Shell type: bash, zsh, fish, or powershell
         shell: String,
     },
+    
+    /// Update ROTD methodology and templates
+    Update {
+        /// Check for updates without applying
+        #[arg(long)]
+        check: bool,
+        /// Skip confirmation prompts
+        #[arg(short, long)]
+        yes: bool,
+    },
+    
+    /// Show version information
+    Version {
+        /// Show project ROTD version
+        #[arg(long)]
+        project: bool,
+        /// Show latest available version
+        #[arg(long)]
+        latest: bool,
+    },
+    
+    /// Validate ROTD artifacts
+    Validate {
+        /// Validate all schemas
+        #[arg(long)]
+        all: bool,
+        /// Validate specific schema type
+        #[arg(long)]
+        schema: Option<String>,
+        /// Strict validation mode
+        #[arg(long)]
+        strict: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -198,6 +231,30 @@ fn main() -> Result<()> {
         
         Commands::Completions { shell } => {
             human::completions(&shell)
+        }
+        
+        Commands::Update { check, yes } => {
+            if is_agent_mode {
+                agent::update(check, yes)
+            } else {
+                human::update(check, yes, cli.verbose)
+            }
+        }
+        
+        Commands::Version { project, latest } => {
+            if is_agent_mode {
+                agent::version(project, latest)
+            } else {
+                human::version(project, latest, cli.verbose)
+            }
+        }
+        
+        Commands::Validate { all, schema, strict } => {
+            if is_agent_mode {
+                agent::validate(all, schema.as_deref(), strict)
+            } else {
+                human::validate(all, schema.as_deref(), strict, cli.verbose)
+            }
         }
     }
 }

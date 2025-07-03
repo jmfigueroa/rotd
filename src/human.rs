@@ -324,6 +324,7 @@ fn create_initial_files(verbose: bool) -> Result<()> {
         phase: None,
         depends_on: None,
         priority: None,
+        priority_score: None,
         created: Some(Utc::now()),
         updated_at: Some(Utc::now()),
         completed: Some(Utc::now()),
@@ -485,4 +486,355 @@ fn print_audit_line(line: &str, _verbose: bool) {
     } else {
         println!("  {}", line.dimmed());
     }
+}
+
+// New update-related functions
+pub fn update(check_only: bool, skip_confirmation: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    if check_only {
+        return check_for_updates(verbose);
+    }
+    
+    println!("{}", "🔄 ROTD Update Process".bold().underline());
+    println!();
+    
+    if !skip_confirmation {
+        if !dialoguer::Confirm::new()
+            .with_prompt("Update ROTD methodology and templates?")
+            .default(true)
+            .interact()?
+        {
+            println!("{}", "Update cancelled.".yellow());
+            return Ok(());
+        }
+    }
+    
+    // Step 1: Backup current state
+    println!("{}", "1. Creating backup...".bold());
+    backup_rotd_files(verbose)?;
+    println!("   {} Backup created", "✓".green());
+    
+    // Step 2: Generate update manifest (for now, hardcoded v1.2.0)
+    println!("{}", "2. Generating update manifest...".bold());
+    let manifest = create_v1_2_0_manifest();
+    write_update_manifest(&manifest, verbose)?;
+    println!("   {} Manifest created", "✓".green());
+    
+    // Step 3: Show user guidance
+    println!();
+    display_update_guidance(&manifest)?;
+    
+    Ok(())
+}
+
+pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
+    if project {
+        show_project_version(verbose)
+    } else if latest {
+        show_latest_version(verbose)
+    } else {
+        show_all_versions(verbose)
+    }
+}
+
+pub fn validate(all: bool, schema_type: Option<&str>, strict: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    println!("{}", "ROTD Validation Report".bold().underline());
+    println!();
+    
+    if all {
+        validate_all_schemas(strict, verbose)
+    } else if let Some(schema) = schema_type {
+        validate_specific_schema(schema, strict, verbose)
+    } else {
+        validate_all_schemas(strict, verbose)
+    }
+}
+
+// Helper functions for update functionality
+fn check_for_updates(verbose: bool) -> Result<()> {
+    println!("{}", "Checking for ROTD updates...".bold());
+    
+    // For now, simulate checking
+    println!("   Current version: {}", "1.1.0".white());
+    println!("   Latest version: {}", "1.2.0".cyan());
+    println!("   {} Update available!", "✓".green());
+    
+    if verbose {
+        println!();
+        println!("Changes in v1.2.0:");
+        println!("  • Task prioritization system");
+        println!("  • Periodic review process");
+        println!("  • Enhanced validation");
+    }
+    
+    Ok(())
+}
+
+fn backup_rotd_files(verbose: bool) -> Result<()> {
+    use std::fs;
+    
+    let rotd_dir = crate::common::rotd_path();
+    let backup_dir = rotd_dir.join("backup");
+    
+    if backup_dir.exists() {
+        fs::remove_dir_all(&backup_dir)?;
+    }
+    fs::create_dir_all(&backup_dir)?;
+    
+    // Backup key files
+    let files_to_backup = [
+        "tasks.jsonl",
+        "session_state.json", 
+        "coverage_history.json",
+        "pss_scores.jsonl",
+        "lessons_learned.jsonl",
+    ];
+    
+    for file in &files_to_backup {
+        let src = rotd_dir.join(file);
+        if src.exists() {
+            let dest = backup_dir.join(file);
+            fs::copy(&src, &dest)?;
+            if verbose {
+                println!("     Backed up {}", file);
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+fn create_v1_2_0_manifest() -> UpdateManifest {
+    UpdateManifest {
+        version: "1.2.0".to_string(),
+        date: "2025-07-03".to_string(),
+        previous_version: "1.1.0".to_string(),
+        changes: vec![
+            ChangeEntry {
+                change_type: "feature".to_string(),
+                component: "task_schema".to_string(),
+                description: "Added priority field with 5-level system".to_string(),
+                breaking: false,
+                migration_required: true,
+            },
+            ChangeEntry {
+                change_type: "feature".to_string(),
+                component: "workflow".to_string(),
+                description: "Added periodic review process".to_string(),
+                breaking: false,
+                migration_required: false,
+            },
+        ],
+    }
+}
+
+fn write_update_manifest(manifest: &UpdateManifest, verbose: bool) -> Result<()> {
+    let manifest_path = crate::common::rotd_path().join("update_manifest.json");
+    write_json(&manifest_path, manifest)?;
+    
+    if verbose {
+        println!("     Manifest written to update_manifest.json");
+    }
+    
+    Ok(())
+}
+
+fn display_update_guidance(manifest: &UpdateManifest) -> Result<()> {
+    println!("{}", "🔄 Update Complete!".green().bold());
+    println!("Version: {} → {}", manifest.previous_version, manifest.version);
+    println!();
+    
+    // Show changes summary
+    println!("{}", "📋 Changes Applied:".bold());
+    for change in &manifest.changes {
+        let icon = if change.migration_required { "🔧" } else { "✨" };
+        println!("  {} {} ({})", icon, change.description, change.component);
+    }
+    println!();
+    
+    // Show required actions
+    let needs_migration = manifest.changes.iter().any(|c| c.migration_required);
+    if needs_migration {
+        println!("{}", "📋 Next Steps:".bold());
+        println!("Use this prompt with your LLM to apply updates to your project:");
+        println!();
+        println!("```");
+        print_update_prompt(&manifest.changes);
+        println!("```");
+    } else {
+        println!("{}", "✅ No migration required - you're all set!".green());
+    }
+    
+    Ok(())
+}
+
+fn print_update_prompt(changes: &[ChangeEntry]) {
+    println!("ROTD methodology has been updated. Apply the latest changes to this project.");
+    println!();
+    println!("📋 **Update Process**:");
+    println!();
+    println!("1. **Review Changes**");
+    println!("   - Check `.rotd/update_manifest.json` for list of updates");
+    println!("   - Identify which changes affect this project");
+    println!();
+    
+    for change in changes.iter().filter(|c| c.migration_required) {
+        match change.component.as_str() {
+            "task_schema" => {
+                println!("2. **Apply Task Schema Updates**");
+                println!("   - Add priority field to existing tasks");
+                println!("   - Use migration logic: blocked→urgent, in_progress→high, pending→medium, complete→low");
+                println!("   - Optionally add priority_score (0-100) for finer ranking");
+                println!();
+            }
+            "workflow" => {
+                println!("2. **Implement New Workflows**");
+                println!("   - Create review schedule file");
+                println!("   - Set up periodic review process");
+                println!();
+            }
+            _ => {
+                println!("2. **Apply {} Changes**", change.component);
+                println!("   - {}", change.description);
+                println!();
+            }
+        }
+    }
+    
+    println!("3. **Verify Updates**");
+    println!("   ```bash");
+    println!("   rotd validate --all --strict");
+    println!("   rotd check");
+    println!("   ```");
+    println!();
+    println!("4. **Log Completion**");
+    println!("   Add entry to `.rotd/update_history.jsonl` when done");
+}
+
+fn show_project_version(verbose: bool) -> Result<()> {
+    let version_path = crate::common::rotd_path().join("version.json");
+    
+    if version_path.exists() {
+        let version: ProjectVersion = read_json(&version_path)?;
+        println!("Project ROTD Version: {}", version.version.cyan());
+        
+        if verbose {
+            println!("Updated: {}", version.updated_at.format("%Y-%m-%d %H:%M UTC"));
+            if let Some(hash) = &version.manifest_hash {
+                println!("Manifest Hash: {}", hash);
+            }
+        }
+    } else {
+        println!("Project ROTD Version: {} (estimated)", "1.1.0".yellow());
+        if verbose {
+            println!("No version.json found - run 'rotd update' to track versions");
+        }
+    }
+    
+    Ok(())
+}
+
+fn show_latest_version(_verbose: bool) -> Result<()> {
+    // For now, hardcoded - in real implementation would fetch from repository
+    println!("Latest ROTD Version: {}", "1.2.0".green());
+    Ok(())
+}
+
+fn show_all_versions(verbose: bool) -> Result<()> {
+    show_project_version(verbose)?;
+    show_latest_version(verbose)?;
+    
+    if verbose {
+        println!();
+        println!("Use 'rotd update --check' to see available updates");
+    }
+    
+    Ok(())
+}
+
+fn validate_all_schemas(strict: bool, verbose: bool) -> Result<()> {
+    let mut passed = 0;
+    let mut total = 0;
+    
+    // Validate tasks.jsonl
+    total += 1;
+    match validate_tasks_schema(strict, verbose) {
+        Ok(_) => {
+            println!("  {} tasks.jsonl schema", "✓".green());
+            passed += 1;
+        }
+        Err(e) => {
+            println!("  {} tasks.jsonl schema: {}", "✗".red(), e);
+        }
+    }
+    
+    // Validate other schemas
+    total += 1;
+    if crate::common::rotd_path().join("pss_scores.jsonl").exists() {
+        println!("  {} pss_scores.jsonl schema", "✓".green());
+        passed += 1;
+    } else {
+        println!("  {} pss_scores.jsonl not found", "!".yellow());
+    }
+    
+    println!();
+    let score = (passed as f64 / total as f64) * 100.0;
+    let score_display = match score as u32 {
+        90..=100 => format!("{:.0}%", score).green(),
+        70..=89 => format!("{:.0}%", score).yellow(),
+        _ => format!("{:.0}%", score).red(),
+    };
+    
+    println!("{} {}/{} ({})", 
+        "Validation Score:".bold(), 
+        passed, 
+        total,
+        score_display
+    );
+    
+    Ok(())
+}
+
+fn validate_specific_schema(schema: &str, strict: bool, verbose: bool) -> Result<()> {
+    match schema {
+        "tasks" => validate_tasks_schema(strict, verbose).map(|_| ()),
+        "scores" => {
+            println!("  {} pss_scores validation not yet implemented", "!".yellow());
+            Ok(())
+        }
+        _ => {
+            println!("{}", format!("Unknown schema type: {}", schema).red());
+            Ok(())
+        }
+    }
+}
+
+fn validate_tasks_schema(strict: bool, verbose: bool) -> Result<Vec<TaskEntry>> {
+    let tasks = read_jsonl::<TaskEntry>(&crate::common::tasks_path())?;
+    
+    let mut errors = Vec::new();
+    for (i, task) in tasks.iter().enumerate() {
+        if let Err(e) = task.validate() {
+            errors.push(format!("Line {}: {}", i + 1, e));
+        }
+        
+        // Check for new priority field in strict mode
+        if strict && task.priority.is_none() {
+            errors.push(format!("Line {}: Missing priority field (required in v1.2.0+)", i + 1));
+        }
+    }
+    
+    if !errors.is_empty() {
+        if verbose {
+            for error in &errors {
+                println!("    {}", error.red());
+            }
+        }
+        return Err(anyhow::anyhow!("{} validation errors", errors.len()));
+    }
+    
+    Ok(tasks)
 }

@@ -382,6 +382,239 @@ rotd show-audit --limit=5
 Use this data to plan next development priorities and identify areas needing attention.
 ```
 
+## 🔍 ROTD Periodic Review
+
+Use this prompt for systematic ROTD review:
+
+```
+Perform a comprehensive ROTD periodic review to ensure project health, compliance, and strategic alignment.
+
+📦 **Review Checklist**:
+
+1. **Artifact Health**
+   - Verify all `.rotd/` files are present and up-to-date
+   - Check for tasks marked complete without test summaries
+   - Identify missing PSS scores for completed tasks
+   - Review staleness of lessons_learned.jsonl
+
+2. **ROTD Compliance**
+   - Ensure tasks marked complete have 100% passing tests
+   - Search for stub annotations (#[rotd_stub]) in complete tasks
+   - Verify no TODOs exist on main branch
+   - Review audit log violations and patterns
+
+3. **Project Alignment**
+   - Compare current tasks against project roadmap
+   - Check task priority distribution
+   - Identify any low-priority tasks completed before high-priority ones
+   - Assess progress toward current milestone
+
+4. **Drift Detection**
+   - Find tasks stuck in "in_progress" for too long
+   - Monitor test coverage trends
+   - Check for duplicate lessons learned entries
+   - Identify recurring audit violations
+
+5. **Task Prioritization Review**
+   - Review urgent tasks are being addressed first
+   - Check for priority inversions in completion order
+   - Assess if deferred tasks should remain deferred
+   - Look for tasks needing priority adjustment
+
+📊 **Review Output Format**:
+Generate a markdown report with:
+- Artifact health status (X/10)
+- Compliance score (X/10)
+- Alignment assessment
+- Drift signals detected
+- Corrective actions (numbered list)
+- Priority adjustments needed
+- Overall project health score
+
+🎯 **Key Questions**:
+- Are high-priority tasks truly getting attention first?
+- Is technical debt accumulating through stub usage?
+- Are lessons being learned and applied?
+- Is the project converging toward its goals?
+
+Example review structure:
+```
+## ROTD Periodic Review: [Date]
+
+### ✅ Artifact Health
+- Status of each artifact type
+- Missing or outdated items
+
+### 🧠 ROTD Compliance 
+- Rule violations found
+- Test integrity issues
+
+### 📈 Project Alignment
+- Roadmap vs actual progress
+- Priority adherence
+
+### ⚠️ Drift Signals
+- Concerning patterns
+- Technical debt indicators
+
+### 🛠️ Corrective Actions
+1. Specific action item
+2. Another action item
+
+### 📊 Health Score
+- Overall: X/10
+- Breakdown by category
+```
+
+This review should be performed weekly or at major milestones to maintain project discipline and momentum.
+```
+
+## 🔄 ROTD Update Application
+
+Use these prompts when applying ROTD methodology updates to existing projects:
+
+### Update Assessment and Planning
+```
+ROTD methodology has been updated. Apply the latest changes to this project.
+
+📋 **Update Process**:
+
+1. **Review Changes**
+   - Check `.rotd/update_manifest.json` for list of updates
+   - Identify which changes affect this project
+   - Note any schema or workflow modifications
+
+2. **Backup Current State**
+   ```bash
+   mkdir -p .rotd/backup
+   cp .rotd/*.jsonl .rotd/backup/
+   cp .rotd/*.json .rotd/backup/
+   ```
+
+3. **Report Update Plan**
+   List all changes that need to be applied:
+   - Schema updates needed
+   - New workflows to implement
+   - Documentation to update
+
+Begin by analyzing the current project state and the required updates.
+```
+
+### Apply Schema Updates
+```
+Apply ROTD schema updates based on the update manifest.
+
+**For Task Priority Update (v1.2.0)**:
+
+📝 **Migration Steps**:
+1. Read each task from `.rotd/tasks.jsonl`
+2. Add priority field if missing:
+   - Tasks with "blocked" status → "urgent"
+   - Tasks "in_progress" → "high"
+   - Tasks "pending" → "medium"
+   - Completed tasks → "low"
+3. Optionally add priority_score for finer ranking
+4. Write updated tasks back to file
+
+**Verification**:
+```bash
+# Verify all tasks have priority
+cat .rotd/tasks.jsonl | jq -r '.priority' | grep -v null
+
+# Check schema compliance
+rotd --agent check
+```
+
+**Example Update**:
+```json
+// Before
+{"id":"4.2","title":"Add validation","status":"in_progress"}
+
+// After  
+{"id":"4.2","title":"Add validation","status":"in_progress","priority":"high"}
+```
+
+Apply these updates systematically and report any issues encountered.
+```
+
+### Implement New Workflows
+```
+Implement new ROTD workflow features in this project.
+
+**For Periodic Review Process (v1.2.0)**:
+
+🔄 **Implementation Steps**:
+
+1. **Create Review Schedule**
+   Create `.rotd/review_schedule.json`:
+   ```json
+   {
+     "frequency": "weekly",
+     "next_review": "2025-07-10",
+     "last_review": null,
+     "reviewer": "reasoning_model"
+   }
+   ```
+
+2. **Add Review Template**
+   Copy the periodic review template to project docs
+
+3. **Update Project Workflows**
+   - Add review reminder to README
+   - Include review in CI/CD pipeline if applicable
+
+4. **Schedule First Review**
+   Set reminder for next Monday or milestone
+
+**Validation Checklist**:
+- [ ] Review schedule file exists
+- [ ] Next review date is set
+- [ ] Template is accessible
+- [ ] Team is aware of new process
+
+Report completion status for each step.
+```
+
+### Post-Update Verification
+```
+Verify ROTD updates have been applied correctly.
+
+✅ **Verification Checklist**:
+
+1. **Schema Compliance**
+   ```bash
+   rotd check --strict
+   ```
+   - All tasks have required new fields
+   - JSON/JSONL files parse correctly
+   - No data was lost during migration
+
+2. **Workflow Integration**
+   - New processes are documented
+   - Schedule files created where needed
+   - Team instructions updated
+
+3. **Update History**
+   Add entry to `.rotd/update_history.jsonl`:
+   ```json
+   {"version":"1.2.0","updated_at":"2025-07-03T10:00:00Z","updated_by":"Claude","status":"success","changes_applied":["task_priority","periodic_review"]}
+   ```
+
+4. **Final Health Check**
+   ```bash
+   rotd check
+   rotd score --format summary
+   ```
+
+**Success Criteria**:
+- No validation errors
+- All new features accessible
+- Project health maintained or improved
+- Update history logged
+
+Report final status and any recommendations for the team.
+```
+
 ---
 
 ## 📚 Prompt Usage Guidelines

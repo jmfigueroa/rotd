@@ -58,7 +58,8 @@ rotd --agent check
   "tests": ["test1.tsx", "test2.tsx"],
   "description": "Task description",
   "phase": "6",
-  "priority": "high|medium|low"
+  "priority": "urgent|high|medium|low|deferred",
+  "priority_score": 75.5
 }
 ```
 
@@ -115,6 +116,19 @@ echo '{"id":"router-conflict","diagnosis":"BrowserRouter nesting","remediation":
 
 # Update task with failure context
 echo '{"id":"6.2","status":"blocked","description":"Test environment issues"}' | rotd agent update-task --timestamp
+```
+
+### Task Prioritization Pattern
+```bash
+# Set task priority when creating/updating
+echo '{"id":"6.3","priority":"urgent","priority_score":95.0}' | rotd agent update-task --timestamp
+
+# Decision logic for priorities:
+# - urgent: Blocking other tasks or breaking CI
+# - high: Critical path for milestone
+# - medium: Normal development tasks
+# - low: Nice-to-have improvements
+# - deferred: Intentionally postponed
 ```
 
 ## ⚠️ Agent Mode Rules

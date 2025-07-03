@@ -51,10 +51,16 @@ Create a `.rotd/` directory (note the leading dot):
 Append-only log, one JSON object per line:
 ```json
 {"id":"4.2","phase":"4","title":"PreambleEditor modal","status":"in_progress",
- "tests":["tests/P4/preamble_modal.test.tsx"],"created":"2025-07-01T05:00Z"}
+ "tests":["tests/P4/preamble_modal.test.tsx"],"created":"2025-07-01T05:00Z",
+ "priority":"high"}
 {"id":"cross-1","phase":"X","title":"Modal shortcuts integration","status":"pending",
- "depends_on":["4","6"],"tests":["__tests__/cross-phase/modal-shortcuts.test.tsx"]}
+ "depends_on":["4","6"],"tests":["__tests__/cross-phase/modal-shortcuts.test.tsx"],
+ "priority":"medium","priority_score":65.0}
 ```
+
+**Task Priority**: Each task can include:
+- `priority`: One of `urgent`, `high`, `medium`, `low`, `deferred`
+- `priority_score`: Optional numeric score (0-100) for finer-grained ranking
 
 **Cross-phase integration tasks**: Use `phase:"X"` and include `depends_on` array listing prerequisite phases. Must include comprehensive integration test paths covering multi-phase interactions.
 
@@ -106,6 +112,16 @@ function fetchUserPrefs(): UserPrefs {
 4. **Log violations** to audit.log immediately
 5. **Before starting integration work**: Check that prerequisite phases are complete and verify no existing conflicts exist
 6. **Cross-phase testing**: Run all affected phase tests when making integration changes to prevent regressions
+
+### Task Prioritization
+When selecting next task, evaluate:
+1. **Blocking status**: Tasks blocking others → `urgent`
+2. **Critical path**: Tasks essential for current milestone → `high`
+3. **Stalled progress**: In-progress tasks lingering → raise priority
+4. **Test failures**: Known regressions → `urgent`
+5. **Maintenance work**: Refactoring/docs → `medium` or `low`
+
+Avoid `urgent` overuse. Use `deferred` for intentionally postponed work.
 
 ### Efficiency Optimizations
 
@@ -168,6 +184,28 @@ Store in `.proj_mgmt/session_state.json`:
 - Deduplicate lessons_learned.jsonl periodically
 - Verify test summaries match reality
 - Adjust coverage thresholds as needed
+
+## Periodic ROTD Review
+
+### Frequency
+- **Weekly**: Minimum baseline
+- **Milestone-based**: At major feature completion
+- **On-demand**: When drift suspected
+
+### Review Checklist
+1. **Artifact Health**: Are all `.rotd/` files present and updated?
+2. **ROTD Compliance**: Tasks marked complete only with passing tests?
+3. **Project Alignment**: Do tasks match roadmap priorities?
+4. **Drift Detection**: Any incomplete tasks lingering? Audit violations unaddressed?
+5. **Corrective Actions**: Reprioritize tasks, extract lessons, address score weaknesses
+
+### Review Output
+Generate markdown report with:
+- Artifact health status
+- Compliance violations found
+- Alignment with project goals
+- Drift signals detected
+- Recommended corrections
 
 ## Summary
 

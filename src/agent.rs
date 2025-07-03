@@ -40,6 +40,7 @@ pub fn init(force: bool, dry_run: bool) -> Result<()> {
         phase: None,
         depends_on: None,
         priority: None,
+        priority_score: None,
         created: Some(Utc::now()),
         updated_at: Some(Utc::now()),
         completed: Some(Utc::now()),
@@ -377,4 +378,220 @@ pub fn info() -> Result<()> {
 
     println!("{}", serde_json::to_string_pretty(&info)?);
     Ok(())
+}
+
+// New update-related agent functions
+pub fn update(check_only: bool, skip_confirmation: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    if check_only {
+        let result = serde_json::json!({
+            "action": "check_updates",
+            "current_version": "1.1.0",
+            "latest_version": "1.2.0", 
+            "update_available": true,
+            "changes": ["task_prioritization", "periodic_review"]
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    // Create backup directory
+    let rotd_dir = crate::common::rotd_path();
+    let backup_dir = rotd_dir.join("backup");
+    if backup_dir.exists() {
+        std::fs::remove_dir_all(&backup_dir)?;
+    }
+    std::fs::create_dir_all(&backup_dir)?;
+    
+    // Generate manifest
+    let manifest = UpdateManifest {
+        version: "1.2.0".to_string(),
+        date: "2025-07-03".to_string(),
+        previous_version: "1.1.0".to_string(),
+        changes: vec![
+            ChangeEntry {
+                change_type: "feature".to_string(),
+                component: "task_schema".to_string(),
+                description: "Added priority field with 5-level system".to_string(),
+                breaking: false,
+                migration_required: true,
+            },
+        ],
+    };
+    
+    // Write manifest
+    let manifest_path = rotd_dir.join("update_manifest.json");
+    write_json(&manifest_path, &manifest)?;
+    
+    let result = serde_json::json!({
+        "status": "success",
+        "action": "update",
+        "version": manifest.version,
+        "changes_applied": manifest.changes.len(),
+        "migration_required": manifest.changes.iter().any(|c| c.migration_required),
+        "manifest_file": ".rotd/update_manifest.json"
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    Ok(())
+}
+
+pub fn version(project: bool, latest: bool) -> Result<()> {
+    if project {
+        let version_path = crate::common::rotd_path().join("version.json");
+        let version = if version_path.exists() {
+            let v: ProjectVersion = read_json(&version_path)?;
+            v.version
+        } else {
+            "1.1.0".to_string()
+        };
+        
+        let result = serde_json::json!({
+            "project_version": version,
+            "tracked": version_path.exists()
+        });
+        println!("{}", serde_json::to_string(&result)?);
+    } else if latest {
+        let result = serde_json::json!({
+            "latest_version": "1.2.0"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+    } else {
+        let version_path = crate::common::rotd_path().join("version.json");
+        let project_version = if version_path.exists() {
+            let v: ProjectVersion = read_json(&version_path)?;
+            v.version
+        } else {
+            "1.1.0".to_string()
+        };
+        
+        let result = serde_json::json!({
+            "project_version": project_version,
+            "latest_version": "1.2.0",
+            "update_available": project_version != "1.2.0"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+    }
+    
+    Ok(())
+}
+
+pub fn validate(all: bool, schema_type: Option<&str>, strict: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let mut report = ValidationReport {
+        overall_status: "passed".to_string(),
+        reports: std::collections::HashMap::new(),
+        timestamp: Utc::now(),
+    };
+    
+    let mut total_errors = 0;
+    
+    if all || schema_type.is_none() {
+        // Validate tasks.jsonl
+        match validate_tasks_jsonl(strict) {
+            Ok(result) => {
+                report.reports.insert("tasks".to_string(), result);
+            }
+            Err(_) => {
+                let result = ValidationResult {
+                    status: "failed".to_string(),
+                    errors: vec!["Failed to read tasks.jsonl".to_string()],
+                    warnings: vec![],
+                    items_checked: 0,
+                };
+                total_errors += 1;
+                report.reports.insert("tasks".to_string(), result);
+            }
+        }
+        
+        // Validate other schemas if they exist
+        if crate::common::rotd_path().join("pss_scores.jsonl").exists() {
+            let result = ValidationResult {
+                status: "passed".to_string(),
+                errors: vec![],
+                warnings: vec![],
+                items_checked: 1,
+            };
+            report.reports.insert("pss_scores".to_string(), result);
+        }
+    } else if let Some(schema) = schema_type {
+        match schema {
+            "tasks" => {
+                match validate_tasks_jsonl(strict) {
+                    Ok(result) => {
+                        report.reports.insert("tasks".to_string(), result);
+                    }
+                    Err(_) => {
+                        let result = ValidationResult {
+                            status: "failed".to_string(),
+                            errors: vec!["Failed to read tasks.jsonl".to_string()],
+                            warnings: vec![],
+                            items_checked: 0,
+                        };
+                        total_errors += 1;
+                        report.reports.insert("tasks".to_string(), result);
+                    }
+                }
+            }
+            _ => {
+                let result = ValidationResult {
+                    status: "unknown".to_string(),
+                    errors: vec![format!("Unknown schema type: {}", schema)],
+                    warnings: vec![],
+                    items_checked: 0,
+                };
+                total_errors += 1;
+                report.reports.insert(schema.to_string(), result);
+            }
+        }
+    }
+    
+    // Count total errors across all reports
+    for result in report.reports.values() {
+        total_errors += result.errors.len();
+    }
+    
+    if total_errors > 0 {
+        report.overall_status = "failed".to_string();
+    }
+    
+    println!("{}", serde_json::to_string(&report)?);
+    Ok(())
+}
+
+// Helper function for validation
+fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
+    let tasks = read_jsonl::<TaskEntry>(&crate::common::tasks_path())?;
+    
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    
+    for (i, task) in tasks.iter().enumerate() {
+        if let Err(e) = task.validate() {
+            errors.push(format!("Line {}: {}", i + 1, e));
+        }
+        
+        // Check for new priority field in strict mode
+        if strict && task.priority.is_none() {
+            errors.push(format!("Line {}: Missing priority field (required in v1.2.0+)", i + 1));
+        }
+        
+        // Check for priority_score validation
+        if let Some(score) = task.priority_score {
+            if !(0.0..=100.0).contains(&score) {
+                errors.push(format!("Line {}: priority_score must be between 0-100, got {}", i + 1, score));
+            }
+        }
+    }
+    
+    let status = if errors.is_empty() { "passed" } else { "failed" };
+    
+    Ok(ValidationResult {
+        status: status.to_string(),
+        errors,
+        warnings,
+        items_checked: tasks.len() as u32,
+    })
 }

@@ -15,6 +15,7 @@ pub struct TaskEntry {
     pub phase: Option<String>,
     pub depends_on: Option<Vec<String>>,
     pub priority: Option<Priority>,
+    pub priority_score: Option<f64>,
     pub created: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub completed: Option<DateTime<Utc>>,
@@ -33,9 +34,11 @@ pub enum TaskStatus {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
-    Low,
-    Medium,
+    Urgent,
     High,
+    Medium,
+    Low,
+    Deferred,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,4 +153,54 @@ impl LessonLearned {
         }
         Ok(())
     }
+}
+
+// Update-related structures
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProjectVersion {
+    pub version: String,
+    pub updated_at: DateTime<Utc>,
+    pub manifest_hash: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateManifest {
+    pub version: String,
+    pub date: String,
+    pub changes: Vec<ChangeEntry>,
+    pub previous_version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChangeEntry {
+    pub change_type: String,
+    pub component: String,
+    pub description: String,
+    pub breaking: bool,
+    pub migration_required: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateHistoryEntry {
+    pub version: String,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: String,
+    pub status: String,
+    pub changes_applied: Vec<String>,
+    pub migration_notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ValidationReport {
+    pub overall_status: String,
+    pub reports: HashMap<String, ValidationResult>,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ValidationResult {
+    pub status: String,
+    pub errors: Vec<String>,
+    pub warnings: Vec<String>,
+    pub items_checked: u32,
 }

@@ -72,12 +72,16 @@ Updates ROTD methodology from remote repository.
 ```bash
 rotd update          # Update with confirmation
 rotd update --yes    # Skip confirmation prompts
+rotd update --check  # Check for available updates
 ```
 
 **Updates:**
 - `.rotd/ROTD.md` - Core methodology
 - `.rotd/pss_score.py` - Scoring system
 - `.rotd/prompts.md` - LLM prompts
+- Creates update manifest for migration tracking
+
+**Note:** After updating, use the ROTD update prompts to apply changes to existing projects. See [ROTD Update Protocol](./ROTD_UPDATE_PROTOCOL.md) for detailed process.
 
 ### `rotd remove`
 Removes ROTD tracking from current project only.
@@ -327,7 +331,14 @@ Use `rotd check` and `rotd score` regularly to maintain project health:
 The methodology evolves. Use `rotd update` to sync with latest practices:
 
 ```bash
-rotd update  # Fetches latest ROTD.md, scoring, and prompts
+rotd update         # Fetches latest ROTD.md, scoring, and prompts
+rotd update --check # Check for available updates without applying
 ```
 
-The CLI provides a Claude Code prompt to help integrate methodology changes into your project.
+After updating, follow the [ROTD Update Protocol](./ROTD_UPDATE_PROTOCOL.md) to apply changes to your project:
+
+1. **Review Changes**: Check update manifest for what changed
+2. **Apply Updates**: Use ROTD update prompts to migrate schemas and workflows  
+3. **Verify**: Run `rotd check --strict` to ensure compliance
+
+The CLI creates update manifests and provides structured prompts to help LLMs integrate methodology changes safely.

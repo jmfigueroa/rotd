@@ -41,8 +41,14 @@
     },
     "priority": {
       "type": "string",
-      "enum": ["low", "medium", "high"],
+      "enum": ["urgent", "high", "medium", "low", "deferred"],
       "description": "Task priority level"
+    },
+    "priority_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Optional numeric priority score for finer-grained ranking"
     },
     "created": {
       "type": "string",
