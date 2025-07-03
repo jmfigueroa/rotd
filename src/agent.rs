@@ -1,10 +1,12 @@
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::{self, json, Value};
+use semver::Version;
 
 use crate::audit;
 use crate::common::check_rotd_initialized;
 use crate::fs_ops::*;
+use crate::github;
 use crate::pss;
 use crate::schema::*;
 use crate::cli::commands::buckle_mode::BuckleModeState;
@@ -381,21 +383,58 @@ pub fn info() -> Result<()> {
     Ok(())
 }
 
-// New update-related agent functions
+// Update-related agent functions
 pub fn update(check_only: bool, skip_confirmation: bool) -> Result<()> {
     check_rotd_initialized()?;
     
+    // Get current version
+    let current_version = env!("CARGO_PKG_VERSION");
+    
+    // Check for updates
+    let (update_available, latest_release) = github::check_update()?;
+    
     if check_only {
+        if let Some(latest) = latest_release {
+            // Extract changes from release description
+            let changes = github::extract_changes(&latest.description);
+            
+            let result = serde_json::json!({
+                "action": "check_updates",
+                "current_version": current_version,
+                "latest_version": latest.version,
+                "update_available": update_available,
+                "published_at": latest.published_at,
+                "changes": changes,
+                "download_url": latest.download_url,
+                "html_url": latest.html_url
+            });
+            println!("{}", serde_json::to_string(&result)?);
+        } else {
+            let result = serde_json::json!({
+                "action": "check_updates",
+                "current_version": current_version,
+                "update_available": false,
+                "message": "No releases found"
+            });
+            println!("{}", serde_json::to_string(&result)?);
+        }
+        return Ok(());
+    }
+    
+    // Check if update is available
+    if !update_available {
         let result = serde_json::json!({
-            "action": "check_updates",
-            "current_version": "1.1.0",
-            "latest_version": "1.2.0", 
-            "update_available": true,
-            "changes": ["task_prioritization", "periodic_review"]
+            "status": "success",
+            "action": "update",
+            "message": "No updates available",
+            "current_version": current_version
         });
         println!("{}", serde_json::to_string(&result)?);
         return Ok(());
     }
+    
+    // Get latest release
+    let latest = latest_release.ok_or_else(|| anyhow::anyhow!("No release information available"))?;
     
     // Create backup directory
     let rotd_dir = crate::common::rotd_path();
@@ -405,18 +444,26 @@ pub fn update(check_only: bool, skip_confirmation: bool) -> Result<()> {
     }
     std::fs::create_dir_all(&backup_dir)?;
     
+    // Backup existing files
+    for file in ["tasks.jsonl", "session_state.json", "coverage_history.json"] {
+        let src = rotd_dir.join(file);
+        if src.exists() {
+            std::fs::copy(&src, backup_dir.join(file))?;
+        }
+    }
+    
     // Generate manifest
     let manifest = UpdateManifest {
-        version: "1.2.0".to_string(),
-        date: "2025-07-03".to_string(),
-        previous_version: "1.1.0".to_string(),
+        version: latest.version.clone(),
+        date: latest.published_at.clone(),
+        previous_version: current_version.to_string(),
         changes: vec![
             ChangeEntry {
                 change_type: "feature".to_string(),
-                component: "task_schema".to_string(),
-                description: "Added priority field with 5-level system".to_string(),
+                component: "rotd".to_string(),
+                description: latest.name.clone(),
                 breaking: false,
-                migration_required: true,
+                migration_required: false,
             },
         ],
     };
@@ -425,12 +472,17 @@ pub fn update(check_only: bool, skip_confirmation: bool) -> Result<()> {
     let manifest_path = rotd_dir.join("update_manifest.json");
     write_json(&manifest_path, &manifest)?;
     
+    // Extract changes
+    let changes = github::extract_changes(&latest.description);
+    
     let result = serde_json::json!({
         "status": "success",
         "action": "update",
-        "version": manifest.version,
-        "changes_applied": manifest.changes.len(),
-        "migration_required": manifest.changes.iter().any(|c| c.migration_required),
+        "current_version": current_version,
+        "new_version": latest.version,
+        "changes": changes,
+        "download_url": latest.download_url,
+        "html_url": latest.html_url,
         "manifest_file": ".rotd/update_manifest.json"
     });
     

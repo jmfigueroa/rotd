@@ -6,6 +6,7 @@ mod audit;
 mod cli;
 mod common;
 mod fs_ops;
+mod github;
 mod human;
 mod pss;
 mod schema;

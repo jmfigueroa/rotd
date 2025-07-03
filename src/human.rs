@@ -4,6 +4,7 @@ use colored::*;
 use crate::audit;
 use crate::common::check_rotd_initialized;
 use crate::fs_ops::*;
+use crate::github;
 use crate::pss;
 use crate::schema::*;
 use crate::cli::commands::buckle_mode::BuckleModeState;
@@ -49,6 +50,196 @@ pub fn init(force: bool, dry_run: bool, verbose: bool) -> Result<()> {
     create_initial_files(verbose)?;
 
     println!("{}", "✓ ROTD project initialized successfully!".green().bold());
+    
+    Ok(())
+}
+
+// Updates ROTD project version if available
+pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?
+    
+    // Get current version
+    let current_version = env!("CARGO_PKG_VERSION");
+    
+    // Check for updates
+    println!("{}", "Checking for ROTD updates...".cyan());
+    let (update_available, latest_release) = github::check_update()?
+    
+    if check_only {
+        // Display current and latest versions
+        println!("   Current version: {}", current_version.green());
+        
+        if let Some(latest) = latest_release {
+            println!("   Latest version: {}", latest.version.green());
+            
+            if update_available {
+                println!("   {} Update available!", "✓".green());
+                
+                if verbose {
+                    println!("\nChanges in latest version:");
+                    for change in github::extract_changes(&latest.description) {
+                        println!("   {}", change);
+                    }
+                    println!("\nSee more: {}", latest.html_url.cyan().underline());
+                }
+            } else {
+                println!("   {} You have the latest version.", "✓".green());
+            }
+        } else {
+            println!("   {} Could not fetch latest version.", "!".yellow());
+        }
+        
+        return Ok(());
+    }
+    
+    // Check if update is available
+    if !update_available {
+        println!("{}", "✓ You're already using the latest version!".green());
+        return Ok(());
+    }
+    
+    // Get latest release
+    let latest = latest_release.ok_or_else(|| anyhow::anyhow!("No release information available"))?;
+    
+    println!("{}", "✓ Update available!".green().bold());
+    println!("   Current version: {}", current_version);
+    println!("   Latest version: {}", latest.version);
+    println!("   Published on: {}", latest.published_at);
+    
+    // Show changes
+    println!("\nChanges in this update:");
+    for change in github::extract_changes(&latest.description) {
+        println!("   {}", change);
+    }
+    
+    // Confirm update
+    if !yes {
+        if !dialoguer::Confirm::new()
+            .with_prompt("Do you want to update now?")
+            .default(true)
+            .interact()?
+        {
+            println!("\n{}", "Update cancelled.".yellow());
+            println!("You can update later with {}", "rotd update".cyan());
+            return Ok(());
+        }
+    }
+    
+    // Create backup directory
+    let rotd_dir = crate::common::rotd_path();
+    let backup_dir = rotd_dir.join("backup");
+    if backup_dir.exists() {
+        std::fs::remove_dir_all(&backup_dir)?;
+    }
+    std::fs::create_dir_all(&backup_dir)?;
+    
+    // Backup existing files
+    println!("\n{}", "Creating backups...".cyan());
+    for file in ["tasks.jsonl", "session_state.json", "coverage_history.json"] {
+        let src = rotd_dir.join(file);
+        if src.exists() {
+            println!("   Backing up {}...", file);
+            std::fs::copy(&src, backup_dir.join(file))?;
+        }
+    }
+    
+    // Generate manifest
+    println!("\n{}", "Generating update manifest...".cyan());
+    let manifest = schema::UpdateManifest {
+        version: latest.version.clone(),
+        date: latest.published_at.clone(),
+        previous_version: current_version.to_string(),
+        changes: vec![
+            schema::ChangeEntry {
+                change_type: "feature".to_string(),
+                component: "rotd".to_string(),
+                description: latest.name.clone(),
+                breaking: false,
+                migration_required: false,
+            },
+        ],
+    };
+    
+    // Write manifest
+    let manifest_path = rotd_dir.join("update_manifest.json");
+    fs_ops::write_json(&manifest_path, &manifest)?;
+    
+    println!("\n{}", "✓ Update prepared successfully!".green().bold());
+    println!("   Download URL: {}", latest.download_url.cyan().underline());
+    println!("   Release info: {}", latest.html_url.cyan().underline());
+    println!("   Manifest: {}", manifest_path.display().to_string().cyan());
+    
+    println!("\nTo complete the update, download the latest version from the URL above.");
+    println!("Your ROTD data has been backed up to: {}", backup_dir.display().to_string().yellow());
+    
+    Ok(())
+}
+
+// Displays version information in human-readable format
+pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
+    if project {
+        let version_path = crate::common::rotd_path().join("version.json");
+        let version = if version_path.exists() {
+            let v: schema::ProjectVersion = fs_ops::read_json(&version_path)?;
+            v.version
+        } else {
+            "1.1.0".to_string()
+        };
+        
+        println!("Project ROTD version: {}", version.green());
+        if verbose {
+            println!("Version tracking: {}", if version_path.exists() { "enabled".green() } else { "not enabled".yellow() });
+        }
+    } else if latest {
+        println!("Checking for latest version...");
+        match github::fetch_latest_release()? {
+            Some(latest) => {
+                println!("Latest available version: {}", latest.version.green());
+                if verbose {
+                    println!("Released on: {}", latest.published_at);
+                    println!("Release URL: {}", latest.html_url.cyan().underline());
+                }
+            }
+            None => {
+                println!("Could not fetch latest version information.");
+            }
+        }
+    } else {
+        let cli_version = env!("CARGO_PKG_VERSION");
+        println!("ROTD CLI version: {}", cli_version.green());
+        
+        // Check project version if available
+        if let Ok(initialized) = common::is_rotd_initialized() {
+            if initialized {
+                let version_path = crate::common::rotd_path().join("version.json");
+                let project_version = if version_path.exists() {
+                    let v: schema::ProjectVersion = fs_ops::read_json(&version_path)?;
+                    v.version
+                } else {
+                    "1.1.0".to_string() // Default if not tracked
+                };
+                
+                println!("Project ROTD version: {}", project_version.green());
+                
+                // Check for latest version
+                if verbose {
+                    println!("\nChecking for updates...");
+                    let (update_available, latest_release) = github::check_update()?;
+                    
+                    if let Some(latest) = latest_release {
+                        println!("Latest available version: {}", latest.version.green());
+                        
+                        if update_available {
+                            println!("\n{}", "Update available!".yellow());
+                            println!("Run {} to update", "rotd update".cyan());
+                        } else {
+                            println!("\n{}", "You have the latest version".green());
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     Ok(())
 }
