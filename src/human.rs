@@ -183,7 +183,7 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.1.0".to_string()
+            "1.2.1".to_string()
         };
         
         println!("Project ROTD version: {}", version.green());
@@ -217,7 +217,7 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
                     let v: ProjectVersion = read_json(&version_path)?;
                     v.version
                 } else {
-                    "1.1.0".to_string() // Default if not tracked
+                    "1.2.1".to_string() // Default if not tracked
                 };
                 
                 println!("Project ROTD version: {}", project_version.green());

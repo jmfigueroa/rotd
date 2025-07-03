@@ -579,7 +579,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.1.0".to_string()
+            "1.2.1".to_string()
         };
         
         let result = serde_json::json!({
@@ -610,7 +610,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.1.0".to_string()
+            "1.2.1".to_string()
         };
         
         // Get latest version from GitHub
