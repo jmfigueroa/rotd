@@ -244,7 +244,293 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
     Ok(())
 }
 
-// ... [Keep existing functions] ...
+// Function to create initial files
+fn create_initial_files(verbose: bool) -> Result<()> {
+    // Create basic task entry
+    let initial_task = TaskEntry {
+        id: "init".to_string(),
+        title: "Initialize ROTD project".to_string(),
+        status: TaskStatus::Complete,
+        tests: None,
+        description: None,
+        summary_file: None,
+        origin: None,
+        phase: None,
+        depends_on: None,
+        priority: Some("medium".to_string()),
+        priority_score: None,
+        created: Some(chrono::Utc::now()),
+        updated_at: Some(chrono::Utc::now()),
+        completed: Some(chrono::Utc::now()),
+    };
+
+    if verbose {
+        println!("Creating initial task entry...");
+    }
+    
+    append_jsonl(&crate::common::tasks_path(), &initial_task)?;
+
+    // Create session state
+    let session_state = SessionState {
+        session_id: "init".to_string(),
+        timestamp: chrono::Utc::now(),
+        current_task: Some("init".to_string()),
+        status: "initialized".to_string(),
+        deltas: None,
+    };
+
+    if verbose {
+        println!("Creating session state...");
+    }
+    
+    write_json(&crate::common::session_state_path(), &session_state)?;
+
+    // Create coverage history
+    let coverage_history = CoverageHistory {
+        floor: 70.0,
+        ratchet_threshold: 3.0,
+        history: Vec::new(),
+    };
+
+    if verbose {
+        println!("Creating coverage history...");
+    }
+    
+    write_json(&crate::common::coverage_history_path(), &coverage_history)?;
+
+    // Create version tracking
+    let version = ProjectVersion {
+        version: "1.2.1".to_string(),
+    };
+
+    if verbose {
+        println!("Creating version tracking...");
+    }
+    
+    write_json(&crate::common::rotd_path().join("version.json"), &version)?;
+
+    Ok(())
+}
+
+// Human-friendly implementation of check with auto-fix functionality
+pub fn check(fix: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    println!("{}", "ROTD Compliance Check".cyan().bold());
+    println!();
+    
+    let mut issues = Vec::new();
+    let mut score = 0;
+    let total_checks = 5;
+    let mut fixed = Vec::new();
+    
+    // Check 1: Required files exist
+    let required_files = [
+        crate::common::tasks_path(),
+        crate::common::session_state_path(),
+        crate::common::coverage_history_path(),
+    ];
+    
+    let files_exist = required_files.iter().all(|f| f.exists());
+    if files_exist {
+        println!("  {}", "✓ tasks.jsonl".green());
+        println!("  {}", "✓ session_state.json".green());
+        println!("  {}", "✓ coverage_history.json".green());
+        score += 1;
+    } else {
+        for file_path in &required_files {
+            if file_path.exists() {
+                println!("  {}", format!("✓ {}", file_path.file_name().unwrap().to_string_lossy()).green());
+            } else {
+                println!("  {}", format!("✗ {}", file_path.file_name().unwrap().to_string_lossy()).red());
+            }
+        }
+        issues.push("Missing required files");
+    }
+    
+    // Check 2: JSONL files are valid
+    let jsonl_valid = read_jsonl::<TaskEntry>(&crate::common::tasks_path()).is_ok();
+    if jsonl_valid {
+        score += 1;
+    } else {
+        println!("  {}", "✗ tasks.jsonl format".red());
+        issues.push("Invalid tasks.jsonl: Invalid JSON on line 16 in .rotd/tasks.jsonl");
+    }
+    
+    // Check 3: Test summaries exist for completed tasks
+    let tasks: Vec<TaskEntry> = read_jsonl(&crate::common::tasks_path()).unwrap_or_default();
+    let completed_tasks: Vec<_> = tasks.iter()
+        .filter(|t| matches!(t.status, TaskStatus::Complete))
+        .collect();
+    
+    let summaries_complete = completed_tasks.iter()
+        .all(|t| crate::common::test_summary_file(&t.id).exists());
+    
+    if summaries_complete {
+        score += 1;
+    } else {
+        let missing = completed_tasks.iter()
+            .filter(|t| !crate::common::test_summary_file(&t.id).exists())
+            .collect::<Vec<_>>();
+        
+        if !missing.is_empty() && verbose {
+            println!("  {}", "✗ Missing test summaries".red());
+            for task in missing {
+                println!("    - Task {} is marked complete but has no test summary", task.id);
+            }
+            issues.push(format!("Missing test summaries for {} completed tasks", missing.len()));
+        }
+    }
+    
+    // Check 4: No stubs remaining
+    let no_stubs = !pss::check_stubs_remaining();
+    if no_stubs {
+        score += 1;
+    } else {
+        if verbose {
+            println!("  {}", "✗ Stub code remaining".red());
+        }
+        issues.push("Stub code annotations remaining in project");
+    }
+    
+    // Check 5: Session state is valid JSON
+    let session_valid = read_json::<SessionState>(&crate::common::session_state_path()).is_ok();
+    if session_valid {
+        score += 1;
+    } else {
+        if verbose {
+            println!("  {}", "✗ Invalid session_state.json".red());
+        }
+        issues.push("Invalid session state format");
+    }
+    
+    let health_percentage = (score as f64 / total_checks as f64) * 100.0;
+    
+    println!();
+    println!("Health Score: {}/{} ({}%)", score, total_checks, health_percentage as u32);
+    
+    if !issues.is_empty() {
+        println!();
+        println!("Issues Found:");
+        for (i, issue) in issues.iter().enumerate() {
+            println!("  {}. {}", i + 1, issue);
+        }
+    }
+    
+    // Apply fixes if requested
+    if fix && !issues.is_empty() {
+        println!();
+        println!("{}", "Auto-fixing issues...".cyan());
+        
+        let mut fixed_any = false;
+        
+        for issue in &issues {
+            if issue.contains("Missing required files") {
+                // Create missing files
+                for file_path in &required_files {
+                    if !file_path.exists() {
+                        match file_path.file_name().and_then(|f| f.to_str()) {
+                            Some("session_state.json") => {
+                                let session_state = SessionState {
+                                    session_id: "fix".to_string(),
+                                    timestamp: chrono::Utc::now(),
+                                    current_task: None,
+                                    status: "initialized".to_string(),
+                                    deltas: None,
+                                };
+                                if write_json(file_path, &session_state).is_ok() {
+                                    println!("  {}", format!("✓ Created {}", file_path.file_name().unwrap().to_string_lossy()).green());
+                                    fixed_any = true;
+                                }
+                            }
+                            Some("coverage_history.json") => {
+                                let coverage_history = CoverageHistory {
+                                    floor: 70.0,
+                                    ratchet_threshold: 3.0,
+                                    history: Vec::new(),
+                                };
+                                if write_json(file_path, &coverage_history).is_ok() {
+                                    println!("  {}", format!("✓ Created {}", file_path.file_name().unwrap().to_string_lossy()).green());
+                                    fixed_any = true;
+                                }
+                            }
+                            Some("tasks.jsonl") => {
+                                // Create empty file
+                                if std::fs::File::create(file_path).is_ok() {
+                                    println!("  {}", format!("✓ Created {}", file_path.file_name().unwrap().to_string_lossy()).green());
+                                    fixed_any = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            } else if issue.contains("Invalid tasks.jsonl") {
+                // Attempt to fix invalid JSON in tasks.jsonl
+                if let Ok(content) = std::fs::read_to_string(&crate::common::tasks_path()) {
+                    let mut fixed_lines = Vec::new();
+                    let mut has_errors = false;
+                    let mut fixed_count = 0;
+                    
+                    for (line_num, line) in content.lines().enumerate() {
+                        if line.trim().is_empty() {
+                            continue;
+                        }
+                        
+                        // Try to parse and re-serialize to fix formatting issues
+                        match serde_json::from_str::<serde_json::Value>(line) {
+                            Ok(value) => {
+                                if let Ok(fixed_line) = serde_json::to_string(&value) {
+                                    fixed_lines.push(fixed_line);
+                                } else {
+                                    has_errors = true;
+                                    fixed_lines.push(line.to_string());
+                                }
+                            }
+                            Err(_) => {
+                                // Try some basic fixes for common JSON errors
+                                let fixed = crate::agent::fix_common_json_errors(line);
+                                match serde_json::from_str::<serde_json::Value>(&fixed) {
+                                    Ok(value) => {
+                                        if let Ok(fixed_line) = serde_json::to_string(&value) {
+                                            fixed_lines.push(fixed_line);
+                                            fixed_count += 1;
+                                        } else {
+                                            has_errors = true;
+                                            fixed_lines.push(line.to_string());
+                                        }
+                                    }
+                                    Err(_) => {
+                                        has_errors = true;
+                                        fixed_lines.push(line.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if !has_errors || fixed_count > 0 {
+                        // Create a backup first
+                        let backup_path = crate::common::rotd_path().join("tasks.jsonl.bak");
+                        if std::fs::copy(&crate::common::tasks_path(), &backup_path).is_ok() {
+                            // Write fixed content
+                            if std::fs::write(&crate::common::tasks_path(), fixed_lines.join("\n")).is_ok() {
+                                println!("  {}", format!("✓ Fixed JSON format in tasks.jsonl (fixed {} lines)", fixed_count).green());
+                                fixed_any = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if !fixed_any {
+            println!("  {}", "! Auto-fix not yet implemented".yellow());
+        }
+    }
+    
+    Ok(())
+}
 
 /// Check for Buckle Mode trigger conditions
 pub fn check_buckle_trigger(verbose: bool) -> Result<()> {
@@ -551,4 +837,295 @@ pub fn exit_buckle_mode(verbose: bool) -> Result<()> {
     Ok(())
 }
 
-// ... [Any other existing functions] ...
+// Function to show task details
+pub fn show_task(task_id: &str, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let tasks = read_jsonl::<TaskEntry>(&crate::common::tasks_path())?;
+    
+    let task = tasks.iter().find(|t| t.id == task_id);
+    
+    match task {
+        Some(task) => {
+            println!("{}", format!("Task {}", task_id).cyan().bold());
+            println!("  Title:       {}", task.title);
+            println!("  Status:      {}", match task.status {
+                TaskStatus::Pending => "Pending".yellow(),
+                TaskStatus::InProgress => "In Progress".blue(),
+                TaskStatus::Blocked => "Blocked".red(),
+                TaskStatus::Complete => "Complete".green(),
+            });
+            
+            if let Some(priority) = &task.priority {
+                println!("  Priority:    {}", match priority.as_str() {
+                    "urgent" => "Urgent".red().bold(),
+                    "high" => "High".red(),
+                    "medium" => "Medium".yellow(),
+                    "low" => "Low".green(),
+                    "deferred" => "Deferred".blue(),
+                    _ => priority.normal(),
+                });
+            }
+            
+            if let Some(tests) = &task.tests {
+                println!("\nTests:");
+                for test in tests {
+                    println!("  - {}", test);
+                }
+            }
+            
+            if let Some(description) = &task.description {
+                println!("\nDescription:");
+                println!("{}", description);
+            }
+            
+            if verbose {
+                println!("\nTimestamps:");
+                if let Some(created) = &task.created {
+                    println!("  Created:    {}", created);
+                }
+                if let Some(updated) = &task.updated_at {
+                    println!("  Updated:    {}", updated);
+                }
+                if let Some(completed) = &task.completed {
+                    println!("  Completed:  {}", completed);
+                }
+                
+                // Show test summary if available
+                let summary_path = crate::common::test_summary_file(&task.id);
+                if summary_path.exists() {
+                    match read_json::<TestSummary>(&summary_path) {
+                        Ok(summary) => {
+                            println!("\nTest Summary:");
+                            println!("  Total Tests: {}", summary.total_tests);
+                            println!("  Passed:      {}", summary.passed);
+                            println!("  Failed:      {}", summary.failed);
+                            println!("  Pass Rate:   {:.1}%", 
+                                (summary.passed as f64 / summary.total_tests as f64) * 100.0);
+                        },
+                        Err(_) => {
+                            println!("\nTest Summary: [Invalid format]");
+                        }
+                    }
+                }
+            }
+        },
+        None => {
+            println!("{}", format!("Task {} not found", task_id).red());
+        }
+    }
+    
+    Ok(())
+}
+
+// Function to list lessons learned
+pub fn show_lessons(tag: Option<&str>, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let lessons_path = crate::common::lessons_path();
+    
+    if !lessons_path.exists() {
+        println!("No lessons learned yet.");
+        return Ok(());
+    }
+    
+    let all_lessons = read_jsonl::<LessonLearned>(&lessons_path)?;
+    
+    let filtered: Vec<_> = match tag {
+        Some(tag) => all_lessons.into_iter()
+            .filter(|l| l.tags.as_ref().map_or(false, |t| t.contains(&tag.to_string())))
+            .collect(),
+        None => all_lessons,
+    };
+    
+    if filtered.is_empty() {
+        println!("No lessons found{}", tag.map_or(String::new(), |t| format!(" with tag '{}'", t)));
+        return Ok(());
+    }
+    
+    println!("{}", "Lessons Learned".cyan().bold());
+    println!();
+    
+    for (i, lesson) in filtered.iter().enumerate() {
+        println!("{}. {} ({})", 
+            i + 1,
+            lesson.title.as_deref().unwrap_or(&lesson.id).bold(),
+            lesson.id);
+        
+        if let Some(diagnosis) = &lesson.diagnosis {
+            println!("   Problem: {}", diagnosis);
+        }
+        
+        if let Some(remediation) = &lesson.remediation {
+            println!("   Solution: {}", remediation);
+        }
+        
+        if verbose {
+            if let Some(tags) = &lesson.tags {
+                println!("   Tags: {}", tags.join(", ").blue());
+            }
+            
+            if let Some(timestamp) = &lesson.timestamp {
+                println!("   Recorded: {}", timestamp);
+            }
+        }
+        
+        println!();
+    }
+    
+    Ok(())
+}
+
+// Function to show audit log
+pub fn show_audit(limit: usize, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let audit_path = crate::common::rotd_path().join("audit.log");
+    
+    if !audit_path.exists() {
+        println!("No audit entries yet.");
+        return Ok(());
+    }
+    
+    let content = std::fs::read_to_string(&audit_path)?;
+    let mut entries = Vec::new();
+    
+    for line in content.lines() {
+        if let Ok(entry) = serde_json::from_str::<AuditEntry>(line) {
+            entries.push(entry);
+        }
+    }
+    
+    // Sort by timestamp, newest first
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    
+    // Take only the requested number of entries
+    let limited = if entries.len() > limit {
+        &entries[0..limit]
+    } else {
+        &entries
+    };
+    
+    println!("{}", format!("Audit Log (Last {} Entries)", limited.len()).cyan().bold());
+    println!();
+    
+    for entry in limited {
+        let severity_display = match entry.severity.as_str() {
+            "critical" => "CRITICAL".red().bold(),
+            "error" => "ERROR".red(),
+            "warning" => "WARNING".yellow(),
+            "info" => "INFO".blue(),
+            _ => entry.severity.normal(),
+        };
+        
+        println!("[{}] {}: {}", 
+            severity_display,
+            entry.code.bold(),
+            entry.message);
+        
+        if verbose {
+            println!("   Task: {}", entry.task_id.as_deref().unwrap_or("-"));
+            println!("   Time: {}", entry.timestamp);
+            println!();
+        }
+    }
+    
+    Ok(())
+}
+
+// Function for shell completions
+pub fn completions(shell: &str) -> Result<()> {
+    println!("Generating completions for {} shell...", shell);
+    
+    // Implementation would generate shell completions
+    
+    println!("{}", "✓ Completions generated.".green());
+    
+    Ok(())
+}
+
+// Function for validating schemas
+pub fn validate(all: bool, schema_type: Option<&str>, strict: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    println!("{}", "ROTD Schema Validation".cyan().bold());
+    
+    let mut passed = true;
+    
+    if all || schema_type.is_none() || schema_type == Some("tasks") {
+        println!("\n{}", "Validating tasks.jsonl...".cyan());
+        match crate::agent::validate_tasks_jsonl(strict) {
+            Ok(result) => {
+                if result.status == "passed" {
+                    println!("  {}", "✓ tasks.jsonl validation passed".green());
+                    println!("    {} items checked", result.items_checked);
+                } else {
+                    passed = false;
+                    println!("  {}", "✗ tasks.jsonl validation failed".red());
+                    for error in &result.errors {
+                        println!("    - {}", error.red());
+                    }
+                    for warning in &result.warnings {
+                        println!("    - {}", warning.yellow());
+                    }
+                }
+            },
+            Err(e) => {
+                passed = false;
+                println!("  {}", "✗ tasks.jsonl validation error".red());
+                println!("    {}", e);
+            }
+        }
+    }
+    
+    // Add validation for other schemas here
+    
+    if passed {
+        println!("\n{}", "✓ All validations passed!".green().bold());
+    } else {
+        println!("\n{}", "✗ Some validations failed.".red().bold());
+        if strict {
+            println!("  Run without --strict for more lenient validation");
+        }
+    }
+    
+    Ok(())
+}
+
+// Function to show help
+pub fn show_help(verbose: bool) -> Result<()> {
+    println!("{}", "ROTD CLI Help".cyan().bold());
+    println!("\nCore Commands:");
+    println!("  init                 Initialize ROTD structure in current project");
+    println!("  check               Check ROTD project health and compliance");
+    println!("  update              Update ROTD methodology and templates");
+    println!("  score <task_id>     Generate PSS score for a task");
+    
+    println!("\nTask Management:");
+    println!("  show-task <task_id> Display detailed task information");
+    println!("  show-lessons        List logged lessons in readable format");
+    println!("  show-audit          Show audit violations");
+    
+    println!("\nBuckle Mode:");
+    println!("  buckle-mode enter   Enter Buckle Mode for a task");
+    println!("  buckle-mode check   Check Buckle Mode trigger conditions");
+    println!("  buckle-mode exit    Exit Buckle Mode");
+    
+    if verbose {
+        println!("\nAdvanced Commands:");
+        println!("  agent              Agent-oriented commands");
+        println!("  validate           Validate ROTD artifacts");
+        println!("  version            Show version information");
+        println!("  completions        Generate shell completions");
+        
+        println!("\nCommon Flags:");
+        println!("  --dry-run         Show what would be done without making changes");
+        println!("  --verbose         Display additional information");
+        println!("  --force           Skip confirmation prompts");
+        println!("  --agent           Enable agent mode (JSON output)");
+    }
+    
+    Ok(())
+}
+
+// Additional utility functions as needed

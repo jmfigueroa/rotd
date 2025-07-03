@@ -11,6 +11,33 @@ use crate::pss;
 use crate::schema::*;
 use crate::cli::commands::buckle_mode::BuckleModeState;
 
+// Helper function to fix common JSON errors
+fn fix_common_json_errors(line: &str) -> String {
+    let mut fixed = line.to_string();
+    
+    // Fix missing quotes around keys
+    let re_missing_quotes = regex::Regex::new(r"\{([^:]*):")
+        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
+    fixed = re_missing_quotes.replace_all(&fixed, "{\"$1\":").to_string();
+    
+    // Fix missing comma between key-value pairs
+    let re_missing_comma = regex::Regex::new(r"\"([^\"]+)\"\s*:\s*\"([^\"]+)\"\s+\"")
+        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
+    fixed = re_missing_comma.replace_all(&fixed, "\"$1\":\"$2\",\"").to_string();
+    
+    // Fix trailing commas
+    let re_trailing_comma = regex::Regex::new(r",\s*\}")
+        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
+    fixed = re_trailing_comma.replace_all(&fixed, "}").to_string();
+    
+    // Fix unquoted string values
+    let re_unquoted_values = regex::Regex::new(r":\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(,|\})")
+        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
+    fixed = re_unquoted_values.replace_all(&fixed, ":\"$1\"$2").to_string();
+    
+    fixed
+}
+
 pub fn init(force: bool, dry_run: bool) -> Result<()> {
     if dry_run {
         println!("{{\"action\":\"init\",\"force\":{},\"dry_run\":true}}", force);
@@ -315,6 +342,61 @@ pub fn check(fix: bool) -> Result<()> {
                                     }
                                 }
                                 _ => {}
+                            }
+                        }
+                    }
+                }
+                "invalid_jsonl" => {
+                    // Attempt to fix invalid JSON in tasks.jsonl
+                    if let Ok(content) = std::fs::read_to_string(&crate::common::tasks_path()) {
+                        let mut fixed_lines = Vec::new();
+                        let mut has_errors = false;
+                        
+                        for (line_num, line) in content.lines().enumerate() {
+                            if line.trim().is_empty() {
+                                continue;
+                            }
+                            
+                            // Try to parse and re-serialize to fix formatting issues
+                            match serde_json::from_str::<serde_json::Value>(line) {
+                                Ok(value) => {
+                                    if let Ok(fixed_line) = serde_json::to_string(&value) {
+                                        fixed_lines.push(fixed_line);
+                                    } else {
+                                        has_errors = true;
+                                        fixed_lines.push(line.to_string());
+                                    }
+                                }
+                                Err(_) => {
+                                    // Try some basic fixes for common JSON errors
+                                    let fixed = fix_common_json_errors(line);
+                                    match serde_json::from_str::<serde_json::Value>(&fixed) {
+                                        Ok(value) => {
+                                            if let Ok(fixed_line) = serde_json::to_string(&value) {
+                                                fixed_lines.push(fixed_line);
+                                                fixed.push(format!("fixed_json_line_{}", line_num + 1));
+                                            } else {
+                                                has_errors = true;
+                                                fixed_lines.push(line.to_string());
+                                            }
+                                        }
+                                        Err(_) => {
+                                            has_errors = true;
+                                            fixed_lines.push(line.to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if !has_errors || fixed_lines.len() > 0 {
+                            // Create a backup first
+                            let backup_path = crate::common::rotd_path().join("tasks.jsonl.bak");
+                            if std::fs::copy(&crate::common::tasks_path(), &backup_path).is_ok() {
+                                // Write fixed content
+                                if std::fs::write(&crate::common::tasks_path(), fixed_lines.join("\n")).is_ok() {
+                                    fixed.push("fixed_jsonl_format");
+                                }
                             }
                         }
                     }
