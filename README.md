@@ -137,6 +137,41 @@ mkdir -p .rotd/test_summaries
 
 **Complete Documentation**: Read [docs/ROTD.md](./docs/ROTD.md) for methodology details and [docs/README_CLI.md](./docs/README_CLI.md) for CLI usage.
 
+## 🔄 Staying Updated
+
+ROTD methodology evolves with new features and improvements. Keep your projects current:
+
+### Check for Updates
+```bash
+# Check if updates are available
+rotd update --check
+
+# See current version
+rotd version
+```
+
+### Apply Updates
+```bash
+# Apply latest methodology updates
+rotd update --yes
+
+# After update, use the provided LLM prompt to migrate your project
+# The CLI will show you exactly what to copy-paste to your LLM
+```
+
+### Update Process
+1. **Pull Updates**: ROTD CLI downloads latest methodology and schemas
+2. **Migration Guidance**: CLI provides copy-pastable prompts for your LLM
+3. **Apply Changes**: LLM migrates your project (adds priority fields, new workflows, etc.)
+4. **Verify**: Run `rotd validate --all --strict` to ensure compliance
+
+**New in v1.2.0:**
+- Task prioritization system (urgent/high/medium/low/deferred)
+- Periodic review process for project health
+- Enhanced validation and update automation
+
+See [docs/ROTD_UPDATE_PROTOCOL.md](./docs/ROTD_UPDATE_PROTOCOL.md) for complete update methodology.
+
 ## 🏗️ Repository Structure
 
 ```
