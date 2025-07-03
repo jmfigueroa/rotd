@@ -39,6 +39,7 @@ pub struct GitHubAsset {
 #[derive(Debug, Clone, Serialize)]
 pub struct ReleaseInfo {
     pub version: String,
+    #[serde(skip_serializing)]
     pub semver: Version,
     pub published_at: String,
     pub name: String,

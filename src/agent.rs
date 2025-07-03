@@ -12,28 +12,28 @@ use crate::schema::*;
 use crate::cli::commands::buckle_mode::BuckleModeState;
 
 // Helper function to fix common JSON errors
-fn fix_common_json_errors(line: &str) -> String {
+pub fn fix_common_json_errors(line: &str) -> String {
     let mut fixed = line.to_string();
     
     // Fix missing quotes around keys
-    let re_missing_quotes = regex::Regex::new(r"\{([^:]*):")
-        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
-    fixed = re_missing_quotes.replace_all(&fixed, "{\"$1\":").to_string();
+    if let Ok(re) = regex::Regex::new(r"\{([^:]*):\") {
+        fixed = re.replace_all(&fixed, "{\"$1\":").to_string();
+    }
     
     // Fix missing comma between key-value pairs
-    let re_missing_comma = regex::Regex::new(r"\"([^\"]+)\"\s*:\s*\"([^\"]+)\"\s+\"")
-        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
-    fixed = re_missing_comma.replace_all(&fixed, "\"$1\":\"$2\",\"").to_string();
+    if let Ok(re) = regex::Regex::new(r#""([^"]+)"\s*:\s*"([^"]+)"\s+""#) {
+        fixed = re.replace_all(&fixed, "\"$1\":\"$2\",\"").to_string();
+    }
     
     // Fix trailing commas
-    let re_trailing_comma = regex::Regex::new(r",\s*\}")
-        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
-    fixed = re_trailing_comma.replace_all(&fixed, "}").to_string();
+    if let Ok(re) = regex::Regex::new(r",\s*}") {
+        fixed = re.replace_all(&fixed, "}").to_string();
+    }
     
     // Fix unquoted string values
-    let re_unquoted_values = regex::Regex::new(r":\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(,|\})")
-        .unwrap_or_else(|_| regex::Regex::new(r"\{\}").unwrap());
-    fixed = re_unquoted_values.replace_all(&fixed, ":\"$1\"$2").to_string();
+    if let Ok(re) = regex::Regex::new(r":\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(,|\})") {
+        fixed = re.replace_all(&fixed, ":\"$1\"$2").to_string();
+    }
     
     fixed
 }
@@ -369,12 +369,12 @@ pub fn check(fix: bool) -> Result<()> {
                                 }
                                 Err(_) => {
                                     // Try some basic fixes for common JSON errors
-                                    let fixed = fix_common_json_errors(line);
+                                    let mut fixed = fix_common_json_errors(line);
                                     match serde_json::from_str::<serde_json::Value>(&fixed) {
                                         Ok(value) => {
                                             if let Ok(fixed_line) = serde_json::to_string(&value) {
                                                 fixed_lines.push(fixed_line);
-                                                fixed.push(format!("fixed_json_line_{}", line_num + 1));
+                                                fixed.push(format!("fixed_json_line_{}", line_num + 1).chars().next().unwrap_or('_'));
                                             } else {
                                                 has_errors = true;
                                                 fixed_lines.push(line.to_string());
@@ -466,7 +466,7 @@ pub fn info() -> Result<()> {
 }
 
 // Update-related agent functions
-pub fn update(check_only: bool, skip_confirmation: bool) -> Result<()> {
+pub fn update(check_only: bool, _skip_confirmation: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Get current version
@@ -588,10 +588,22 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
         });
         println!("{}", serde_json::to_string(&result)?);
     } else if latest {
-        let result = serde_json::json!({
-            "latest_version": "1.2.0"
-        });
-        println!("{}", serde_json::to_string(&result)?);
+        // Check GitHub for latest version
+        match github::fetch_latest_release()? {
+            Some(latest) => {
+                let result = serde_json::json!({
+                    "latest_version": latest.version
+                });
+                println!("{}", serde_json::to_string(&result)?);
+            },
+            None => {
+                let result = serde_json::json!({
+                    "error": "Could not fetch latest version information",
+                    "latest_version": "unknown"
+                });
+                println!("{}", serde_json::to_string(&result)?);
+            }
+        }
     } else {
         let version_path = crate::common::rotd_path().join("version.json");
         let project_version = if version_path.exists() {
@@ -601,10 +613,16 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             "1.1.0".to_string()
         };
         
+        // Get latest version from GitHub
+        let (update_available, latest_version) = match github::check_update()? {
+            (available, Some(release)) => (available, release.version),
+            _ => (false, "unknown".to_string())
+        };
+        
         let result = serde_json::json!({
             "project_version": project_version,
-            "latest_version": "1.2.0",
-            "update_available": project_version != "1.2.0"
+            "latest_version": latest_version,
+            "update_available": update_available
         });
         println!("{}", serde_json::to_string(&result)?);
     }
@@ -697,11 +715,11 @@ pub fn validate(all: bool, schema_type: Option<&str>, strict: bool) -> Result<()
 }
 
 // Helper function for validation
-fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
+pub fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
     let tasks = read_jsonl::<TaskEntry>(&crate::common::tasks_path())?;
     
     let mut errors = Vec::new();
-    let mut warnings = Vec::new();
+    let warnings = Vec::new();
     
     for (i, task) in tasks.iter().enumerate() {
         if let Err(e) = task.validate() {
@@ -710,7 +728,7 @@ fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
         
         // Check for new priority field in strict mode
         if strict && task.priority.is_none() {
-            errors.push(format!("Line {}: Missing priority field (required in v1.2.0+)", i + 1));
+            errors.push(format!("Line {}: Missing priority field (required in v1.2.1+)", i + 1));
         }
         
         // Check for priority_score validation
@@ -735,8 +753,8 @@ fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
 pub fn check_buckle_trigger() -> Result<()> {
     check_rotd_initialized()?;
     
-    let mut triggered = false;
-    let mut reasons = Vec::new();
+    let triggered = false;
+    let reasons: Vec<String> = Vec::new();
     
     // Check for compilation errors
     // Implementation would check cargo/npm output for error count
@@ -754,7 +772,7 @@ pub fn check_buckle_trigger() -> Result<()> {
     let result = json!({
         "triggered": triggered,
         "reasons": reasons,
-        "recommendation": triggered ? "Enter Buckle Mode" : "No action needed"
+        "recommendation": if triggered { "Enter Buckle Mode" } else { "No action needed" }
     });
     
     println!("{}", serde_json::to_string(&result)?);
@@ -769,13 +787,13 @@ pub fn enter_buckle_mode(task_id: &str) -> Result<()> {
     // Check if already in Buckle Mode
     let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
     if buckle_state_path.exists() {
-        let state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?
+        let state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)
             .map_err(|e| anyhow::anyhow!("{{\"error\":\"invalid_json\",\"message\":\"{}\"}}", e))?;
         
         if state.active {
             let result = json!({
                 "status": "error",
-                "message": format!("Already in Buckle Mode for task: {}", state.task_id.unwrap_or_default()),
+                "message": format!("Already in Buckle Mode for task: {}", state.task_id.clone().unwrap_or_default()),
                 "current_task": state.task_id
             });
             println!("{}", serde_json::to_string(&result)?);
@@ -908,7 +926,8 @@ pub fn fix_compilation() -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     
     // Implementation would attempt to fix compilation errors
     
@@ -957,7 +976,8 @@ pub fn fix_artifacts() -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     
     // Implementation would attempt to fix artifacts
     
@@ -1006,7 +1026,8 @@ pub fn check_exit_criteria() -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     
     // Implementation would check all exit criteria
     
@@ -1056,7 +1077,8 @@ pub fn exit_buckle_mode() -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     
     // Check if exit criteria are met
     if !state.exit_criteria_met {

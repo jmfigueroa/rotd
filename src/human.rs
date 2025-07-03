@@ -56,14 +56,14 @@ pub fn init(force: bool, dry_run: bool, verbose: bool) -> Result<()> {
 
 // Updates ROTD project version if available
 pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
-    check_rotd_initialized()?
+    check_rotd_initialized()?;
     
     // Get current version
     let current_version = env!("CARGO_PKG_VERSION");
     
     // Check for updates
     println!("{}", "Checking for ROTD updates...".cyan());
-    let (update_available, latest_release) = github::check_update()?
+    let (update_available, latest_release) = github::check_update()?;
     
     if check_only {
         // Display current and latest versions
@@ -145,12 +145,12 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
     
     // Generate manifest
     println!("\n{}", "Generating update manifest...".cyan());
-    let manifest = schema::UpdateManifest {
+    let manifest = UpdateManifest {
         version: latest.version.clone(),
         date: latest.published_at.clone(),
         previous_version: current_version.to_string(),
         changes: vec![
-            schema::ChangeEntry {
+            ChangeEntry {
                 change_type: "feature".to_string(),
                 component: "rotd".to_string(),
                 description: latest.name.clone(),
@@ -162,7 +162,7 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
     
     // Write manifest
     let manifest_path = rotd_dir.join("update_manifest.json");
-    fs_ops::write_json(&manifest_path, &manifest)?;
+    write_json(&manifest_path, &manifest)?;
     
     println!("\n{}", "✓ Update prepared successfully!".green().bold());
     println!("   Download URL: {}", latest.download_url.cyan().underline());
@@ -180,7 +180,7 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
     if project {
         let version_path = crate::common::rotd_path().join("version.json");
         let version = if version_path.exists() {
-            let v: schema::ProjectVersion = fs_ops::read_json(&version_path)?;
+            let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
             "1.1.0".to_string()
@@ -209,11 +209,12 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
         println!("ROTD CLI version: {}", cli_version.green());
         
         // Check project version if available
-        if let Ok(initialized) = common::is_rotd_initialized() {
+        if let Ok(_) = crate::common::check_rotd_initialized() {
+            let initialized = true;
             if initialized {
                 let version_path = crate::common::rotd_path().join("version.json");
                 let project_version = if version_path.exists() {
-                    let v: schema::ProjectVersion = fs_ops::read_json(&version_path)?;
+                    let v: ProjectVersion = read_json(&version_path)?;
                     v.version
                 } else {
                     "1.1.0".to_string() // Default if not tracked
@@ -257,7 +258,7 @@ fn create_initial_files(verbose: bool) -> Result<()> {
         origin: None,
         phase: None,
         depends_on: None,
-        priority: Some("medium".to_string()),
+        priority: Some(Priority::Medium),
         priority_score: None,
         created: Some(chrono::Utc::now()),
         updated_at: Some(chrono::Utc::now()),
@@ -301,6 +302,8 @@ fn create_initial_files(verbose: bool) -> Result<()> {
     // Create version tracking
     let version = ProjectVersion {
         version: "1.2.1".to_string(),
+        manifest_hash: None,
+        updated_at: chrono::Utc::now(),
     };
 
     if verbose {
@@ -322,7 +325,7 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
     let mut issues = Vec::new();
     let mut score = 0;
     let total_checks = 5;
-    let mut fixed = Vec::new();
+    let _fixed: Vec<String> = Vec::new();
     
     // Check 1: Required files exist
     let required_files = [
@@ -375,10 +378,11 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
         
         if !missing.is_empty() && verbose {
             println!("  {}", "✗ Missing test summaries".red());
-            for task in missing {
+            let missing_count = missing.len();
+            for task in &missing {
                 println!("    - Task {} is marked complete but has no test summary", task.id);
             }
-            issues.push(format!("Missing test summaries for {} completed tasks", missing.len()));
+            issues.push("Missing test summaries for completed tasks");
         }
     }
     
@@ -472,7 +476,7 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
                     let mut has_errors = false;
                     let mut fixed_count = 0;
                     
-                    for (line_num, line) in content.lines().enumerate() {
+                    for (_line_num, line) in content.lines().enumerate() {
                         if line.trim().is_empty() {
                             continue;
                         }
@@ -533,13 +537,13 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
 }
 
 /// Check for Buckle Mode trigger conditions
-pub fn check_buckle_trigger(verbose: bool) -> Result<()> {
+pub fn check_buckle_trigger(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     println!("{}", "Checking Buckle Mode trigger conditions...".cyan().bold());
     
-    let mut triggered = false;
-    let mut reasons = Vec::new();
+    let triggered = false;
+    let reasons: Vec<String> = Vec::new();
     
     // Check for compilation errors
     println!("Checking for compilation errors...");
@@ -577,7 +581,7 @@ pub fn check_buckle_trigger(verbose: bool) -> Result<()> {
 pub fn enter_buckle_mode(task_id: &str, verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
-    println!("{}", "Entering Buckle Mode for task: ".cyan().bold() + &task_id.white().bold());
+    println!("{} {}", "Entering Buckle Mode for task:".cyan().bold(), task_id.white().bold());
     
     // Check if already in Buckle Mode
     let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
@@ -628,7 +632,7 @@ pub fn enter_buckle_mode(task_id: &str, verbose: bool) -> Result<()> {
 }
 
 // Function to diagnose Buckle Mode issues
-pub fn diagnose_buckle_mode(verbose: bool) -> Result<()> {
+pub fn diagnose_buckle_mode(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Check Buckle Mode state
@@ -689,7 +693,7 @@ pub fn diagnose_buckle_mode(verbose: bool) -> Result<()> {
 }
 
 // Function to fix compilation errors
-pub fn fix_compilation(verbose: bool) -> Result<()> {
+pub fn fix_compilation(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Check Buckle Mode state
@@ -705,7 +709,8 @@ pub fn fix_compilation(verbose: bool) -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     println!("{}", format!("Fixing compilation errors for task: {}", task_id).cyan().bold());
     
     // Implementation would attempt to fix compilation errors
@@ -724,7 +729,7 @@ pub fn fix_compilation(verbose: bool) -> Result<()> {
 }
 
 // Function to fix artifacts
-pub fn fix_artifacts(verbose: bool) -> Result<()> {
+pub fn fix_artifacts(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Check Buckle Mode state
@@ -740,7 +745,8 @@ pub fn fix_artifacts(verbose: bool) -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     println!("{}", format!("Fixing artifact issues for task: {}", task_id).cyan().bold());
     
     // Implementation would attempt to fix artifacts
@@ -759,7 +765,7 @@ pub fn fix_artifacts(verbose: bool) -> Result<()> {
 }
 
 // Function to check exit criteria
-pub fn check_exit_criteria(verbose: bool) -> Result<()> {
+pub fn check_exit_criteria(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Check Buckle Mode state
@@ -775,7 +781,8 @@ pub fn check_exit_criteria(verbose: bool) -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     println!("{}", format!("Checking exit criteria for task: {}", task_id).cyan().bold());
     
     // Implementation would check all exit criteria
@@ -794,7 +801,7 @@ pub fn check_exit_criteria(verbose: bool) -> Result<()> {
 }
 
 // Function to exit Buckle Mode
-pub fn exit_buckle_mode(verbose: bool) -> Result<()> {
+pub fn exit_buckle_mode(_verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     // Check Buckle Mode state
@@ -810,7 +817,8 @@ pub fn exit_buckle_mode(verbose: bool) -> Result<()> {
         return Ok(());
     }
     
-    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    let unknown = "unknown".to_string();
+    let task_id = state.task_id.as_ref().unwrap_or(&unknown);
     
     // Check if exit criteria are met
     if !state.exit_criteria_met {
@@ -854,6 +862,7 @@ pub fn show_task(task_id: &str, verbose: bool) -> Result<()> {
                 TaskStatus::InProgress => "In Progress".blue(),
                 TaskStatus::Blocked => "Blocked".red(),
                 TaskStatus::Complete => "Complete".green(),
+                TaskStatus::Scaffolded => "Scaffolded".cyan(),
             });
             
             if let Some(priority) = &task.priority {
@@ -933,7 +942,7 @@ pub fn show_lessons(tag: Option<&str>, verbose: bool) -> Result<()> {
     
     let filtered: Vec<_> = match tag {
         Some(tag) => all_lessons.into_iter()
-            .filter(|l| l.tags.as_ref().map_or(false, |t| t.contains(&tag.to_string())))
+            .filter(|l| l.tags.iter().any(|t| t == tag))
             .collect(),
         None => all_lessons,
     };
@@ -949,20 +958,16 @@ pub fn show_lessons(tag: Option<&str>, verbose: bool) -> Result<()> {
     for (i, lesson) in filtered.iter().enumerate() {
         println!("{}. {} ({})", 
             i + 1,
-            lesson.title.as_deref().unwrap_or(&lesson.id).bold(),
+            lesson.id.bold(),
             lesson.id);
         
-        if let Some(diagnosis) = &lesson.diagnosis {
-            println!("   Problem: {}", diagnosis);
-        }
+        println!("   Problem: {}", lesson.diagnosis);
         
-        if let Some(remediation) = &lesson.remediation {
-            println!("   Solution: {}", remediation);
-        }
+        println!("   Solution: {}", lesson.remediation);
         
         if verbose {
-            if let Some(tags) = &lesson.tags {
-                println!("   Tags: {}", tags.join(", ").blue());
+            if !lesson.tags.is_empty() {
+                println!("   Tags: {}", lesson.tags.join(", ").blue());
             }
             
             if let Some(timestamp) = &lesson.timestamp {
@@ -1020,7 +1025,7 @@ pub fn show_audit(limit: usize, verbose: bool) -> Result<()> {
         
         println!("[{}] {}: {}", 
             severity_display,
-            entry.code.bold(),
+            entry.rule.bold(),
             entry.message);
         
         if verbose {
@@ -1045,7 +1050,7 @@ pub fn completions(shell: &str) -> Result<()> {
 }
 
 // Function for validating schemas
-pub fn validate(all: bool, schema_type: Option<&str>, strict: bool, verbose: bool) -> Result<()> {
+pub fn validate(all: bool, schema_type: Option<&str>, strict: bool, _verbose: bool) -> Result<()> {
     check_rotd_initialized()?;
     
     println!("{}", "ROTD Schema Validation".cyan().bold());
@@ -1088,6 +1093,73 @@ pub fn validate(all: bool, schema_type: Option<&str>, strict: bool, verbose: boo
             println!("  Run without --strict for more lenient validation");
         }
     }
+    
+    Ok(())
+}
+
+// Function to score task using PSS
+pub fn score(task_id: &str, format: &str, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    println!("{}", format!("Scoring task {} using ROTD PSS...", task_id).cyan().bold());
+    
+    // Call the core scoring function
+    let score_result = pss::score_task(task_id)?;
+    
+    match format {
+        "json" => {
+            println!("{}", serde_json::to_string_pretty(&score_result)?);
+        },
+        "summary" => {
+            println!("Task ID: {}", task_id);
+            println!("Total Score: {}/10", score_result.score);
+            println!("Status: {}", if score_result.score >= 6 { "PASSED".green() } else { "FAILED".red() });
+        },
+        _ => { // table format
+            println!("Task ID: {}", task_id);
+            println!("Total Score: {}/10", score_result.score);
+            println!("Status: {}", if score_result.score >= 6 { "PASSED".green() } else { "FAILED".red() });
+            
+            println!("\nDetailed Scores:");
+            println!("---------------");
+            // Compute execution sanity score from criteria
+            let execution_sanity = score_result.criteria.iter()
+                .filter(|(k, _)| ["llm_engaged", "compiles", "core_impl"].contains(&k.as_str()))
+                .map(|(_, v)| v.score)
+                .sum::<u32>();
+            println!("Execution Sanity: {}/3", execution_sanity);
+            // Compute testing discipline score from criteria
+            let testing_discipline = score_result.criteria.iter()
+                .filter(|(k, _)| ["tests_written", "tests_pass", "coverage"].contains(&k.as_str()))
+                .map(|(_, v)| v.score)
+                .sum::<u32>();
+            println!("Testing Discipline: {}/3", testing_discipline);
+            // Compute cleanup discipline score from criteria
+            let cleanup_discipline = score_result.criteria.iter()
+                .filter(|(k, _)| ["no_stubs", "docs_updated"].contains(&k.as_str()))
+                .map(|(_, v)| v.score)
+                .sum::<u32>();
+            println!("Cleanup Discipline: {}/2", cleanup_discipline);
+            // Compute historical continuity score from criteria
+            let historical_continuity = score_result.criteria.iter()
+                .filter(|(k, _)| ["history_consistent", "lessons_logged"].contains(&k.as_str()))
+                .map(|(_, v)| v.score)
+                .sum::<u32>();
+            println!("Historical Continuity: {}/2", historical_continuity);
+            
+            if verbose {
+                println!("\nDetails:");
+                for (i, (key, criterion)) in score_result.criteria.iter().enumerate() {
+                    println!("{:2}. {} {}", i+1, 
+                        if criterion.score > 0 { "✓".green() } else { "✗".red() },
+                        format!("{}: {}", key, criterion.rationale));
+                }
+            }
+        }
+    }
+    
+    // Record score to file
+    pss::save_score(&score_result, false)?;
     
     Ok(())
 }

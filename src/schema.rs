@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -39,6 +40,28 @@ pub enum Priority {
     Medium,
     Low,
     Deferred,
+}
+
+impl Priority {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Priority::Urgent => "urgent",
+            Priority::High => "high",
+            Priority::Medium => "medium",
+            Priority::Low => "low",
+            Priority::Deferred => "deferred",
+        }
+    }
+    
+    pub fn normal(&self) -> colored::ColoredString {
+        match self {
+            Priority::Urgent => "Urgent".red().bold(),
+            Priority::High => "High".red(),
+            Priority::Medium => "Medium".yellow(),
+            Priority::Low => "Low".green(),
+            Priority::Deferred => "Deferred".blue(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

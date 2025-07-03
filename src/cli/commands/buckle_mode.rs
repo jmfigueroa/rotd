@@ -47,19 +47,19 @@ pub struct BuckleModeState {
 }
 
 /// Handle the buckle-mode command
-pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
+pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
     match &args.command {
         BuckleModeCommands::Enter { task_id } => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::enter_buckle_mode(task_id) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::enter_buckle_mode(task_id, false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
@@ -69,12 +69,12 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::diagnose_buckle_mode() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::diagnose_buckle_mode(false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
@@ -84,12 +84,12 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::fix_compilation() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::fix_compilation(false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
@@ -99,12 +99,12 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::fix_artifacts() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::fix_artifacts(false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
@@ -114,12 +114,12 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::check_exit_criteria() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::check_exit_criteria(false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
@@ -129,12 +129,12 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
             if std::env::args().any(|arg| arg == "--agent") {
                 match crate::agent::exit_buckle_mode() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             } else {
                 match crate::human::exit_buckle_mode(false) {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string()),
+                    Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
         },
