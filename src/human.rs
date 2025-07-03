@@ -378,7 +378,7 @@ pub fn check(fix: bool, verbose: bool) -> Result<()> {
         
         if !missing.is_empty() && verbose {
             println!("  {}", "✗ Missing test summaries".red());
-            let missing_count = missing.len();
+            let _missing_count = missing.len();
             for task in &missing {
                 println!("    - Task {} is marked complete but has no test summary", task.id);
             }
@@ -1164,6 +1164,7 @@ pub fn score(task_id: &str, format: &str, verbose: bool) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 // Function to show help
 pub fn show_help(verbose: bool) -> Result<()> {
     println!("{}", "ROTD CLI Help".cyan().bold());

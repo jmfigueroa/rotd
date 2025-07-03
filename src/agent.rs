@@ -1,7 +1,6 @@
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::{self, json, Value};
-use semver::Version;
 
 use crate::audit;
 use crate::common::check_rotd_initialized;

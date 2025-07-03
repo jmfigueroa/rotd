@@ -43,6 +43,7 @@ pub fn log_entry(task_id: &str, rule: &str, severity: &str, message: &str) -> Re
     log_violation(Some(task_id), rule, severity, message)
 }
 
+#[allow(dead_code)]
 pub fn read_audit_log(limit: usize) -> Result<Vec<String>> {
     let audit_path = crate::common::audit_log_path();
     

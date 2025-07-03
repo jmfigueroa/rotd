@@ -1,6 +1,4 @@
-use anyhow::Result;
 use clap::{Args, Subcommand};
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Args)]
