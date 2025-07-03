@@ -418,7 +418,7 @@ pub fn check(fix: bool) -> Result<()> {
 pub fn info() -> Result<()> {
     let info = serde_json::json!({
         "rotd_cli": {
-            "version": "0.1.0",
+            "version": "1.2.1",
             "agent_commands": {
                 "update_task": {
                     "usage": "rotd agent update-task [--file FILE] [--strict] [--pss] [--timestamp]",

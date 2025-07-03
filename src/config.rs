@@ -10,7 +10,7 @@ pub struct RotdConfig {
 impl Default for RotdConfig {
     fn default() -> Self {
         Self {
-            version: "0.1.0".to_string(),
+            version: "1.2.1".to_string(),
             github_repo: "https://github.com/jmfigueroa/rotd".to_string(),
             default_score_threshold: 6,
         }
