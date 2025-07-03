@@ -15,7 +15,8 @@
 ### Project Management
 ```bash
 rotd init [--force]                    # Initialize ROTD project
-rotd check [--fix]                     # Health check and compliance
+rotd check [--fix] [--buckle-trigger]      # Health check and compliance
+rotd buckle-mode <command> [options]         # Buckle Mode recovery operations
 rotd completions <shell>               # Generate shell completions
 ```
 
@@ -83,6 +84,21 @@ echo '{"id":"6.2","status":"complete"}' | rotd agent update-task --timestamp --p
 rotd agent append-summary --file test_summaries/6.2.json
 ```
 
+### Recover from Buckle Mode
+```bash
+# Enter Buckle Mode
+rotd buckle-mode enter 6.2
+
+# Fix compilation issues
+rotd buckle-mode fix-compilation
+
+# Fix missing artifacts
+rotd buckle-mode fix-artifacts
+
+# Exit when all checks pass
+rotd buckle-mode exit
+```
+
 ### Review Project Health (Human)
 ```bash
 rotd check --verbose
@@ -102,6 +118,20 @@ echo '{"id":"fix-001","diagnosis":"...","remediation":"..."}' | rotd agent log-l
 - **1**: General error (invalid arguments, file not found)
 - **2**: Validation error (invalid JSON, schema violation)
 - **3**: ROTD compliance error (missing .rotd directory, failed checks)
+
+### Buckle Mode Commands
+```bash
+# Check if Buckle Mode is needed
+rotd check --buckle-trigger
+
+# Manage Buckle Mode
+rotd buckle-mode enter <task_id>             # Enter Buckle Mode for task
+rotd buckle-mode diagnose                    # Generate diagnostic report
+rotd buckle-mode fix-compilation            # Fix compilation errors
+rotd buckle-mode fix-artifacts              # Fix missing artifacts
+rotd buckle-mode check-exit                 # Verify exit criteria
+rotd buckle-mode exit                       # Exit Buckle Mode
+```
 
 ### Common Errors
 ```bash

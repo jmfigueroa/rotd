@@ -112,6 +112,8 @@ function fetchUserPrefs(): UserPrefs {
 4. **Log violations** to audit.log immediately
 5. **Before starting integration work**: Check that prerequisite phases are complete and verify no existing conflicts exist
 6. **Cross-phase testing**: Run all affected phase tests when making integration changes to prevent regressions
+7. **NEVER use in-memory task tracking**: Always update `.rotd/tasks.jsonl` after each session run
+8. **Enter Buckle Mode** when compilation or artifact integrity breaks down
 
 ### Task Prioritization
 When selecting next task, evaluate:
@@ -206,6 +208,21 @@ Generate markdown report with:
 - Alignment with project goals
 - Drift signals detected
 - Recommended corrections
+
+## Recovery Protocols
+
+### Buckle Mode
+
+When a project breaks down due to compilation failures or artifact integrity issues, ROTD provides a structured recovery protocol called **Buckle Mode**.
+
+See [ROTD Buckle Mode](./recovery/BUCKLE_MODE.md) for the complete recovery protocol and [Buckle Mode Trigger Rule](./audit_rules/BUCKLE_MODE_TRIGGER.md) for the audit rule that enforces it.
+
+### Key Features
+
+- **Automatic Triggering**: Enters recovery mode when compilation fails or artifacts are missing
+- **Structured Recovery**: Clear step-by-step process to restore project health
+- **Artifact Protection**: Prevents loss of project state and context
+- **Task Integrity**: Maintains `.rotd/tasks.jsonl` as the source of truth
 
 ## Summary
 

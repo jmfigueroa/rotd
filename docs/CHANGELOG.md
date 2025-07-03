@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Buckle Mode recovery protocol for compilation and artifact integrity failures
+- Audit rule for automatic Buckle Mode triggering (audit.buckle.trigger.001)
+- CLI commands for Buckle Mode diagnostics and recovery
+- Enhanced task tracking protection with session boundary enforcement
 - Complete ROTD CLI utility with agent and human modes
 - Agent-aware prompts for LLM workflows
 - JSON schema validation for all ROTD artifacts
