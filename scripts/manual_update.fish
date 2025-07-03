@@ -114,8 +114,78 @@ log_success "Backup created at $BACKUP_DIR"
 # Update schema files based on version
 log_info "Updating ROTD schemas"
 
-# 1. Update tasks.jsonl (add priority field)
+# 1. Update tasks.jsonl (add priority field and fix JSON errors)
 if test -f ".rotd/tasks.jsonl"
+  # Check if tasks.jsonl is valid JSON
+  set -l is_valid_json (jq empty ".rotd/tasks.jsonl" 2>/dev/null; echo $status)
+  
+  if test $is_valid_json -ne 0
+    log_info "Found invalid JSON in tasks.jsonl, attempting to fix"
+    if test "$DRY_RUN" = false
+      # Create a backup first
+      cp ".rotd/tasks.jsonl" ".rotd/tasks.jsonl.bak"
+      
+      # Read the file line by line and try to fix each line
+      set -l temp_file ".rotd/tasks.jsonl.fixed"
+      rm -f $temp_file
+      touch $temp_file
+      
+      set -l fixed_count 0
+      set -l error_count 0
+      
+      while read -l line
+        if test -z "$line"
+          continue
+        end
+        
+        # Try to parse and fix JSON
+        set -l fixed_line ""
+        set -l valid_json (echo $line | jq empty 2>/dev/null; echo $status)
+        
+        if test $valid_json -eq 0
+          # Line is already valid JSON, just normalize it
+          set fixed_line (echo $line | jq -c '.')
+        else
+          # Try to fix common JSON errors
+          # 1. Missing quotes around keys
+          set fixed_line (echo $line | sed -E 's/\{([^:]*):/{"\1":/g')
+          # 2. Missing quotes around values
+          set fixed_line (echo $fixed_line | sed -E 's/:([^"{}\[\],]*)(,|\})/:\"\1\"\2/g')
+          # 3. Fix trailing commas
+          set fixed_line (echo $fixed_line | sed -E 's/,\s*\}/}/g')
+          
+          # Check if our fix worked
+          set valid_json (echo $fixed_line | jq empty 2>/dev/null; echo $status)
+          if test $valid_json -eq 0
+            set fixed_count (math $fixed_count + 1)
+          else
+            # If we couldn't fix it, keep the original
+            set fixed_line $line
+            set error_count (math $error_count + 1)
+          end
+        end
+        
+        # Write the line to the temp file
+        echo $fixed_line >> $temp_file
+      end < ".rotd/tasks.jsonl"
+      
+      # Replace the original file if we fixed anything
+      if test $fixed_count -gt 0
+        mv $temp_file ".rotd/tasks.jsonl"
+        log_success "Fixed $fixed_count JSON errors in tasks.jsonl"
+        if test $error_count -gt 0
+          log_warning "Could not fix $error_count lines in tasks.jsonl"
+        end
+      else
+        rm $temp_file
+        if test $error_count -gt 0
+          log_warning "Could not fix any JSON errors in tasks.jsonl ($error_count lines with errors)"
+        end
+      end
+    end
+  end
+  
+  # Now check and add priority field if needed
   if grep -q "\"priority\":" ".rotd/tasks.jsonl"
     log_info "Tasks already have priority field"
   else
