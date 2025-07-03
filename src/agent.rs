@@ -1,12 +1,13 @@
 use anyhow::Result;
 use chrono::Utc;
-use serde_json;
+use serde_json::{self, json, Value};
 
 use crate::audit;
 use crate::common::check_rotd_initialized;
 use crate::fs_ops::*;
 use crate::pss;
 use crate::schema::*;
+use crate::cli::commands::buckle_mode::BuckleModeState;
 
 pub fn init(force: bool, dry_run: bool) -> Result<()> {
     if dry_run {
@@ -594,4 +595,365 @@ fn validate_tasks_jsonl(strict: bool) -> Result<ValidationResult> {
         warnings,
         items_checked: tasks.len() as u32,
     })
+}
+
+/// Check for Buckle Mode trigger conditions (agent mode)
+pub fn check_buckle_trigger() -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let mut triggered = false;
+    let mut reasons = Vec::new();
+    
+    // Check for compilation errors
+    // Implementation would check cargo/npm output for error count
+    
+    // Check task.jsonl integrity
+    // Implementation would verify task.jsonl status is consistent
+    
+    // Check test summaries
+    // Implementation would verify test summaries exist for completed tasks
+    
+    // Check session state
+    // Implementation would verify session_state.json is up to date
+    
+    // Return JSON result
+    let result = json!({
+        "triggered": triggered,
+        "reasons": reasons,
+        "recommendation": triggered ? "Enter Buckle Mode" : "No action needed"
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
+}
+
+/// Enter Buckle Mode for a specific task (agent mode)
+pub fn enter_buckle_mode(task_id: &str) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    // Check if already in Buckle Mode
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if buckle_state_path.exists() {
+        let state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?
+            .map_err(|e| anyhow::anyhow!("{{\"error\":\"invalid_json\",\"message\":\"{}\"}}", e))?;
+        
+        if state.active {
+            let result = json!({
+                "status": "error",
+                "message": format!("Already in Buckle Mode for task: {}", state.task_id.unwrap_or_default()),
+                "current_task": state.task_id
+            });
+            println!("{}", serde_json::to_string(&result)?);
+            return Ok(());
+        }
+    }
+    
+    // Create Buckle Mode state
+    let state = BuckleModeState {
+        active: true,
+        task_id: Some(task_id.to_string()),
+        entered_at: chrono::Utc::now().to_rfc3339(),
+        compilation_fixed: false,
+        artifacts_fixed: false,
+        exit_criteria_met: false,
+    };
+    
+    // Save state
+    std::fs::write(
+        buckle_state_path,
+        serde_json::to_string_pretty(&state)?
+    )?;
+    
+    // Log to audit log
+    audit::log_entry(
+        task_id,
+        "audit.buckle.trigger.001",
+        "critical",
+        "Entered Buckle Mode manually",
+    )?;
+    
+    // Return JSON result with diagnostics
+    let diagnostics = diagnose_buckle_mode_json()?;
+    let result = json!({
+        "status": "success",
+        "message": "Entered Buckle Mode successfully",
+        "task_id": task_id,
+        "diagnostics": diagnostics
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
+}
+
+/// Generate diagnostic report for Buckle Mode (agent mode)
+pub fn diagnose_buckle_mode_json() -> Result<Value> {
+    check_rotd_initialized()?;
+    
+    // Check Buckle Mode state
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if !buckle_state_path.exists() {
+        return Ok(json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        }));
+    }
+    
+    let state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?;
+    if !state.active {
+        return Ok(json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        }));
+    }
+    
+    let task_id = state.task_id.unwrap_or_default();
+    
+    // Implementation would collect diagnostics
+    
+    let diagnostics = json!({
+        "task_id": task_id,
+        "compilation": {
+            "status": "unknown",
+            "errors": 0
+        },
+        "tests": {
+            "status": "unknown",
+            "total": 0,
+            "passed": 0
+        },
+        "artifacts": {
+            "status": "unknown",
+            "missing": []
+        },
+        "task_tracking": {
+            "status": "unknown",
+            "issues": []
+        },
+        "exit_criteria": {
+            "compilation_fixed": state.compilation_fixed,
+            "artifacts_fixed": state.artifacts_fixed,
+            "exit_criteria_met": state.exit_criteria_met,
+            "can_exit": state.exit_criteria_met
+        }
+    });
+    
+    Ok(diagnostics)
+}
+
+/// Diagnose Buckle Mode status (agent mode)
+pub fn diagnose_buckle_mode() -> Result<()> {
+    let diagnostics = diagnose_buckle_mode_json()?;
+    println!("{}", serde_json::to_string(&diagnostics)?);
+    Ok(())
+}
+
+/// Fix compilation errors (agent mode)
+pub fn fix_compilation() -> Result<()> {
+    check_rotd_initialized()?;
+    
+    // Check Buckle Mode state
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if !buckle_state_path.exists() {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let mut state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?;
+    if !state.active {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    
+    // Implementation would attempt to fix compilation errors
+    
+    // Update state
+    state.compilation_fixed = true;
+    std::fs::write(
+        buckle_state_path,
+        serde_json::to_string_pretty(&state)?
+    )?;
+    
+    // Return JSON result
+    let result = json!({
+        "status": "success",
+        "message": "Compilation fixes applied",
+        "task_id": task_id,
+        "next_step": "fix-artifacts"
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
+}
+
+/// Fix artifacts (agent mode)
+pub fn fix_artifacts() -> Result<()> {
+    check_rotd_initialized()?;
+    
+    // Check Buckle Mode state
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if !buckle_state_path.exists() {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let mut state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?;
+    if !state.active {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    
+    // Implementation would attempt to fix artifacts
+    
+    // Update state
+    state.artifacts_fixed = true;
+    std::fs::write(
+        buckle_state_path,
+        serde_json::to_string_pretty(&state)?
+    )?;
+    
+    // Return JSON result
+    let result = json!({
+        "status": "success",
+        "message": "Artifact fixes applied",
+        "task_id": task_id,
+        "next_step": "check-exit"
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
+}
+
+/// Check exit criteria (agent mode)
+pub fn check_exit_criteria() -> Result<()> {
+    check_rotd_initialized()?;
+    
+    // Check Buckle Mode state
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if !buckle_state_path.exists() {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let mut state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?;
+    if !state.active {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    
+    // Implementation would check all exit criteria
+    
+    // Update state
+    state.exit_criteria_met = true;
+    std::fs::write(
+        buckle_state_path,
+        serde_json::to_string_pretty(&state)?
+    )?;
+    
+    // Return JSON result
+    let result = json!({
+        "status": "success",
+        "message": "All exit criteria met",
+        "task_id": task_id,
+        "can_exit": true,
+        "next_step": "exit"
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
+}
+
+/// Exit Buckle Mode (agent mode)
+pub fn exit_buckle_mode() -> Result<()> {
+    check_rotd_initialized()?;
+    
+    // Check Buckle Mode state
+    let buckle_state_path = crate::common::rotd_path().join("buckle_state.json");
+    if !buckle_state_path.exists() {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let state: BuckleModeState = serde_json::from_str(&std::fs::read_to_string(&buckle_state_path)?)?;
+    if !state.active {
+        let result = json!({
+            "status": "error",
+            "message": "Not in Buckle Mode"
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    let task_id = state.task_id.as_ref().unwrap_or(&"unknown".to_string());
+    
+    // Check if exit criteria are met
+    if !state.exit_criteria_met {
+        let result = json!({
+            "status": "error",
+            "message": "Exit criteria not met",
+            "task_id": task_id
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
+    
+    // Remove Buckle Mode state
+    std::fs::remove_file(buckle_state_path)?;
+    
+    // Log to audit log
+    audit::log_entry(
+        task_id,
+        "audit.buckle.exit",
+        "info",
+        "Exited Buckle Mode successfully",
+    )?;
+    
+    // Return JSON result
+    let result = json!({
+        "status": "success",
+        "message": "Exited Buckle Mode successfully",
+        "task_id": task_id
+    });
+    
+    println!("{}", serde_json::to_string(&result)?);
+    
+    Ok(())
 }

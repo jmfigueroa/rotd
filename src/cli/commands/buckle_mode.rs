@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{Args, Subcommand};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
@@ -49,65 +50,94 @@ pub struct BuckleModeState {
 pub fn handle_buckle_mode(args: &BuckleModeArgs) -> Result<(), String> {
     match &args.command {
         BuckleModeCommands::Enter { task_id } => {
-            println!("{} Entering Buckle Mode for task: {}", "INFO:".blue(), task_id);
-            // Implementation would:
-            // 1. Check if already in Buckle Mode
-            // 2. Save current state
-            // 3. Create Buckle Mode state file
-            // 4. Run diagnostics
-            // 5. Log entry to audit log
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::enter_buckle_mode(task_id) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::enter_buckle_mode(task_id, false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
         
         BuckleModeCommands::Diagnose => {
-            println!("{} Generating Buckle Mode diagnostic report", "INFO:".blue());
-            // Implementation would:
-            // 1. Check compilation status
-            // 2. Check test status
-            // 3. Check artifact integrity
-            // 4. Generate report
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::diagnose_buckle_mode() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::diagnose_buckle_mode(false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
         
         BuckleModeCommands::FixCompilation => {
-            println!("{} Fixing compilation errors", "INFO:".blue());
-            // Implementation would:
-            // 1. Run compiler
-            // 2. Analyze errors
-            // 3. Apply fixes if possible
-            // 4. Update Buckle Mode state
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::fix_compilation() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::fix_compilation(false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
         
         BuckleModeCommands::FixArtifacts => {
-            println!("{} Fixing missing or invalid artifacts", "INFO:".blue());
-            // Implementation would:
-            // 1. Check for missing test summaries
-            // 2. Check for invalid task entries
-            // 3. Generate missing artifacts
-            // 4. Update Buckle Mode state
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::fix_artifacts() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::fix_artifacts(false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
         
         BuckleModeCommands::CheckExit => {
-            println!("{} Checking Buckle Mode exit criteria", "INFO:".blue());
-            // Implementation would:
-            // 1. Verify compilation succeeds
-            // 2. Verify all tests pass
-            // 3. Verify all artifacts exist and are valid
-            // 4. Update Buckle Mode state
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::check_exit_criteria() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::check_exit_criteria(false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
         
         BuckleModeCommands::Exit => {
-            println!("{} Exiting Buckle Mode", "INFO:".blue());
-            // Implementation would:
-            // 1. Verify exit criteria are met
-            // 2. Clear Buckle Mode state
-            // 3. Log exit to audit log
-            // 4. Return to normal operation
-            Ok(())
-        }
+            // Check if in agent mode
+            if std::env::args().any(|arg| arg == "--agent") {
+                match crate::agent::exit_buckle_mode() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            } else {
+                match crate::human::exit_buckle_mode(false) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
+        },
     }
 }
 

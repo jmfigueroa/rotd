@@ -3,11 +3,14 @@ use clap::{Parser, Subcommand};
 
 mod agent;
 mod audit;
+mod cli;
 mod common;
 mod fs_ops;
 mod human;
 mod pss;
 mod schema;
+
+use cli::commands::buckle_mode::{BuckleModeArgs, handle_buckle_mode};
 
 #[derive(Parser)]
 #[command(name = "rotd")]
@@ -38,6 +41,9 @@ enum Commands {
         #[arg(short, long)]
         force: bool,
     },
+    
+    /// Buckle Mode recovery operations
+    BuckleMode(BuckleModeArgs),
     
     /// Generate PSS score for a task
     Score {
@@ -79,6 +85,10 @@ enum Commands {
         /// Fix issues automatically where possible
         #[arg(short, long)]
         fix: bool,
+        
+        /// Check if Buckle Mode trigger conditions are met
+        #[arg(long)]
+        buckle_trigger: bool,
     },
     
     /// Generate shell completions
@@ -221,8 +231,14 @@ fn main() -> Result<()> {
             }
         }
         
-        Commands::Check { fix } => {
-            if is_agent_mode {
+        Commands::Check { fix, buckle_trigger } => {
+            if buckle_trigger {
+                if is_agent_mode {
+                    agent::check_buckle_trigger()
+                } else {
+                    human::check_buckle_trigger(cli.verbose)
+                }
+            } else if is_agent_mode {
                 agent::check(fix)
             } else {
                 human::check(fix, cli.verbose)
@@ -247,6 +263,10 @@ fn main() -> Result<()> {
             } else {
                 human::version(project, latest, cli.verbose)
             }
+        }
+        
+        Commands::BuckleMode(buckle_args) => {
+            handle_buckle_mode(&buckle_args)
         }
         
         Commands::Validate { all, schema, strict } => {
