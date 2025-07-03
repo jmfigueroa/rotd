@@ -1165,7 +1165,6 @@ pub fn score(task_id: &str, format: &str, verbose: bool) -> Result<()> {
 }
 
 #[allow(dead_code)]
-// Function to show help
 pub fn show_help(verbose: bool) -> Result<()> {
     println!("{}", "ROTD CLI Help".cyan().bold());
     println!("\nCore Commands:");
