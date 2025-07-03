@@ -1,125 +1,113 @@
-#!/bin/bash
-# ROTD Manual Update Script
+#!/usr/bin/env fish
+# ROTD Manual Update Script (Fish Shell Version)
 # This script helps update older ROTD repositories to the latest version
-# Usage: ./manual_update.sh [--dry-run] [--force]
-
-set -e
+# Usage: ./manual_update.fish [--dry-run] [--force]
 
 # Configuration
-DRY_RUN=false
-FORCE=false
-# Get current date in ISO format (cross-platform compatible)
-CURRENT_DATE=$(date +"%Y-%m-%d")
-# Get current timestamp in ISO format (cross-platform compatible)
-CURRENT_TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S%z")
-LATEST_VERSION="1.2.1"
-GITHUB_REPO_URL="https://github.com/jmfigueroa/rotd"
+set -l DRY_RUN false
+set -l FORCE false
+set -l LATEST_VERSION "1.2.1"
+set -l GITHUB_REPO_URL "https://github.com/jmfigueroa/rotd"
+
+# Get current date and timestamp in a cross-platform way
+set -l CURRENT_DATE (date "+%Y-%m-%d")
+set -l CURRENT_TIMESTAMP (date "+%Y-%m-%dT%H:%M:%S%z")
 
 # Process arguments
-for arg in "$@"; do
-  case $arg in
-    --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    --force)
-      FORCE=true
-      shift
-      ;;
-  esac
-done
+for arg in $argv
+  switch $arg
+    case --dry-run
+      set DRY_RUN true
+    case --force
+      set FORCE true
+  end
+end
 
 # Text formatting
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-BOLD='\033[1m'
+set -l GREEN '\033[0;32m'
+set -l YELLOW '\033[1;33m'
+set -l CYAN '\033[0;36m'
+set -l RED '\033[0;31m'
+set -l NC '\033[0m' # No Color
+set -l BOLD '\033[1m'
 
 # Helper functions
-function log_info() {
-  echo -e "${CYAN}INFO:${NC} $1"
-}
+function log_info
+  echo -e "$CYAN""INFO:""$NC $argv"
+end
 
-function log_success() {
-  echo -e "${GREEN}✓ SUCCESS:${NC} $1"
-}
+function log_success
+  echo -e "$GREEN""✓ SUCCESS:""$NC $argv"
+end
 
-function log_warning() {
-  echo -e "${YELLOW}⚠ WARNING:${NC} $1"
-}
+function log_warning
+  echo -e "$YELLOW""⚠ WARNING:""$NC $argv"
+end
 
-function log_error() {
-  echo -e "${RED}✗ ERROR:${NC} $1"
+function log_error
+  echo -e "$RED""✗ ERROR:""$NC $argv"
   exit 1
-}
+end
 
-function check_command() {
-  if ! command -v $1 &> /dev/null; then
-    log_error "Required command '$1' not found. Please install it first."
-  fi
-}
+function check_command
+  if not command -sq $argv[1]
+    log_error "Required command '$argv[1]' not found. Please install it first."
+  end
+end
 
-function run_command() {
-  if [ "$DRY_RUN" = true ]; then
-    echo -e "${YELLOW}DRY RUN:${NC} Would run: $1"
+function run_command
+  if test "$DRY_RUN" = true
+    echo -e "$YELLOW""DRY RUN:""$NC Would run: $argv"
   else
-    echo -e "${CYAN}RUNNING:${NC} $1"
-    eval "$1"
-  fi
-}
+    echo -e "$CYAN""RUNNING:""$NC $argv"
+    eval $argv
+  end
+end
 
-function get_current_version() {
-  local version_path=".rotd/version.json"
-  if [ -f "$version_path" ]; then
-    jq -r '.version' "$version_path" 2>/dev/null || echo "1.0.0"
+function get_current_version
+  set -l version_path ".rotd/version.json"
+  if test -f "$version_path"
+    jq -r '.version' "$version_path" 2>/dev/null; or echo "1.0.0"
   else
     echo "1.0.0"
-  fi
-}
+  end
+end
 
 # Check for required tools
 check_command jq
 check_command git
 
 # Check if we're in a directory with .rotd
-if [ ! -d ".rotd" ]; then
+if not test -d ".rotd"
   log_error "No .rotd directory found. Please run this script from the root of a ROTD project."
-fi
+end
 
 log_info "Starting ROTD manual update process"
-echo -e "${BOLD}This script will update your ROTD project to version $LATEST_VERSION${NC}"
+echo -e "$BOLD""This script will update your ROTD project to version $LATEST_VERSION""$NC"
 echo
 
 # Get current version
-CURRENT_VERSION=$(get_current_version)
+set -l CURRENT_VERSION (get_current_version)
 log_info "Current ROTD version: $CURRENT_VERSION"
 log_info "Target ROTD version: $LATEST_VERSION"
 
 # Backup existing ROTD files
 log_info "Creating backup of ROTD files"
-BACKUP_DIR=".rotd/backup_$(date +%Y%m%d_%H%M%S)"
+set -l BACKUP_DIR ".rotd/backup_"(date "+%Y%m%d_%H%M%S")
 run_command "mkdir -p $BACKUP_DIR"
 
 # Copy all important files to backup
-ROTD_FILES=(
-  "tasks.jsonl"
-  "session_state.json"
-  "coverage_history.json"
-  "pss_scores.jsonl"
-  "lessons_learned.jsonl"
-)
+set -l ROTD_FILES "tasks.jsonl" "session_state.json" "coverage_history.json" "pss_scores.jsonl" "lessons_learned.jsonl"
 
-for file in "${ROTD_FILES[@]}"; do
-  if [ -f ".rotd/$file" ]; then
+for file in $ROTD_FILES
+  if test -f ".rotd/$file"
     run_command "cp .rotd/$file $BACKUP_DIR/"
-  fi
-done
+  end
+end
 
-if [ -d ".rotd/test_summaries" ]; then
+if test -d ".rotd/test_summaries"
   run_command "cp -r .rotd/test_summaries $BACKUP_DIR/"
-fi
+end
 
 log_success "Backup created at $BACKUP_DIR"
 
@@ -127,12 +115,12 @@ log_success "Backup created at $BACKUP_DIR"
 log_info "Updating ROTD schemas"
 
 # 1. Update tasks.jsonl (add priority field)
-if [ -f ".rotd/tasks.jsonl" ]; then
-  if grep -q "\"priority\":" ".rotd/tasks.jsonl"; then
+if test -f ".rotd/tasks.jsonl"
+  if grep -q "\"priority\":" ".rotd/tasks.jsonl"
     log_info "Tasks already have priority field"
   else
     log_info "Adding priority field to tasks"
-    if [ "$DRY_RUN" = false ]; then
+    if test "$DRY_RUN" = false
       # Create a temporary file
       cat ".rotd/tasks.jsonl" | jq 'if .priority == null then 
         . + {
@@ -148,36 +136,36 @@ if [ -f ".rotd/tasks.jsonl" ]; then
         else . end' > ".rotd/tasks.jsonl.new"
       
       # Check if conversion was successful
-      if jq empty ".rotd/tasks.jsonl.new" 2>/dev/null; then
+      if jq empty ".rotd/tasks.jsonl.new" 2>/dev/null
         mv ".rotd/tasks.jsonl.new" ".rotd/tasks.jsonl"
         log_success "Priority field added to tasks"
       else
         rm ".rotd/tasks.jsonl.new"
         log_error "Failed to update tasks.jsonl. Please check the file format."
-      fi
-    fi
-  fi
-fi
+      end
+    end
+  end
+end
 
 # Create or update version.json
 log_info "Updating version tracking"
-if [ "$DRY_RUN" = false ]; then
+if test "$DRY_RUN" = false
   echo "{\"version\":\"$LATEST_VERSION\"}" > ".rotd/version.json"
-fi
+end
 log_success "Version updated to $LATEST_VERSION"
 
 # Create update history entry
 log_info "Adding update history entry"
-UPDATE_HISTORY_ENTRY="{\"version\":\"$LATEST_VERSION\",\"updated_at\":\"$CURRENT_TIMESTAMP\",\"updated_by\":\"Manual Update Script\",\"status\":\"success\",\"changes_applied\":[\"github_integration\",\"task_priority\"]}"
+set -l UPDATE_HISTORY_ENTRY "{\"version\":\"$LATEST_VERSION\",\"updated_at\":\"$CURRENT_TIMESTAMP\",\"updated_by\":\"Manual Update Script\",\"status\":\"success\",\"changes_applied\":[\"github_integration\",\"task_priority\"]}"
 
-if [ "$DRY_RUN" = false ]; then
-  echo "$UPDATE_HISTORY_ENTRY" >> ".rotd/update_history.jsonl"
-fi
+if test "$DRY_RUN" = false
+  echo $UPDATE_HISTORY_ENTRY >> ".rotd/update_history.jsonl"
+end
 log_success "Update history recorded"
 
 # Create update manifest
 log_info "Creating update manifest"
-UPDATE_MANIFEST="{
+set -l UPDATE_MANIFEST "{
   \"version\": \"$LATEST_VERSION\",
   \"date\": \"$CURRENT_DATE\",
   \"previous_version\": \"$CURRENT_VERSION\",
@@ -199,39 +187,42 @@ UPDATE_MANIFEST="{
   ]
 }"
 
-if [ "$DRY_RUN" = false ]; then
-  echo "$UPDATE_MANIFEST" > ".rotd/update_manifest.json"
-fi
+if test "$DRY_RUN" = false
+  echo $UPDATE_MANIFEST > ".rotd/update_manifest.json"
+end
 log_success "Update manifest created"
 
 # Create periodic review schedule if it doesn't exist
-if [ ! -f ".rotd/review_schedule.json" ]; then
+if not test -f ".rotd/review_schedule.json"
   log_info "Creating periodic review schedule"
+  
   # Get next Monday in a cross-platform way
-  # For macOS compatibility
-  if [[ "$(uname)" == "Darwin" ]]; then
-    # macOS approach
-    NEXT_MONDAY=$(date -v+mon +%Y-%m-%d)
+  set -l NEXT_MONDAY ""
+  
+  # For macOS
+  if test (uname) = "Darwin"
+    set NEXT_MONDAY (date -v+mon "+%Y-%m-%d")
   else
-    # Linux approach
-    NEXT_MONDAY=$(date -d "next Monday" +%Y-%m-%d 2>/dev/null || date -v+mon +%Y-%m-%d 2>/dev/null || echo "$(date +%Y-%m-%d)")
-  fi
-  REVIEW_SCHEDULE="{
+    # For Linux/others
+    set NEXT_MONDAY (date -d "next Monday" "+%Y-%m-%d" 2>/dev/null; or date -v+mon "+%Y-%m-%d" 2>/dev/null; or date "+%Y-%m-%d")
+  end
+  
+  set -l REVIEW_SCHEDULE "{
     \"frequency\": \"weekly\",
     \"next_review\": \"$NEXT_MONDAY\",
     \"reviewers\": [\"team\"],
     \"created_at\": \"$CURRENT_TIMESTAMP\"
   }"
   
-  if [ "$DRY_RUN" = false ]; then
-    echo "$REVIEW_SCHEDULE" > ".rotd/review_schedule.json"
-  fi
+  if test "$DRY_RUN" = false
+    echo $REVIEW_SCHEDULE > ".rotd/review_schedule.json"
+  end
   log_success "Review schedule created"
-fi
+end
 
 # Verify the update
 log_info "Verifying the update"
-echo -e "${YELLOW}NOTE:${NC} For a complete verification, please run these commands manually:"
+echo -e "$YELLOW""NOTE:""$NC For a complete verification, please run these commands manually:"
 echo "  rotd validate --all --strict"
 echo "  rotd check --strict"
 echo "  rotd check --fix"
@@ -239,12 +230,12 @@ echo "  rotd check --fix"
 # Print final instructions
 echo
 log_success "ROTD Update Completed"
-echo -e "${BOLD}Next Steps:${NC}"
+echo -e "$BOLD""Next Steps:""$NC"
 echo "1. Run 'rotd validate --all --strict' to verify all schemas"
 echo "2. Run 'rotd check --strict' to verify project health"
 echo "3. Fix any issues with 'rotd check --fix'"
 echo "4. Test GitHub integration with 'rotd update --check --verbose'"
 echo "5. Review the updated documentation at $GITHUB_REPO_URL"
 echo
-echo -e "Your backup is available at: ${CYAN}$BACKUP_DIR${NC}"
+echo -e "Your backup is available at: ""$CYAN""$BACKUP_DIR""$NC"
 echo -e "If you encounter any issues, please restore from backup or report to the ROTD team."

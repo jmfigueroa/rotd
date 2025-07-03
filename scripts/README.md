@@ -2,9 +2,14 @@
 
 This directory contains utility scripts for managing ROTD updates.
 
-## Manual Update Script
+## Manual Update Scripts
 
-`manual_update.sh` is a utility for updating older ROTD repositories to the latest version, especially useful when dealing with repositories that had the old hardcoded version checking.
+Two versions of the manual update script are provided:
+
+- `manual_update.sh` - Bash shell version
+- `manual_update.fish` - Fish shell version
+
+Both scripts provide the same functionality for updating older ROTD repositories to the latest version, especially useful when dealing with repositories that had the old hardcoded version checking.
 
 ### Features
 
@@ -18,8 +23,12 @@ This directory contains utility scripts for managing ROTD updates.
 ### Usage
 
 ```bash
+# Bash shell version
 # From the root of your ROTD project
 ./scripts/manual_update.sh [OPTIONS]
+
+# Fish shell version
+./scripts/manual_update.fish [OPTIONS]
 ```
 
 #### Options
@@ -35,11 +44,19 @@ This directory contains utility scripts for managing ROTD updates.
 ### Example
 
 ```bash
+# Bash shell version
 # Test what would happen without making changes
 ./scripts/manual_update.sh --dry-run
 
 # Apply the update
 ./scripts/manual_update.sh
+
+# Fish shell version
+# Test what would happen without making changes
+./scripts/manual_update.fish --dry-run
+
+# Apply the update
+./scripts/manual_update.fish
 ```
 
 ### Post-Update Verification
