@@ -21,15 +21,15 @@ use cli::commands::buckle_mode::{BuckleModeArgs, handle_buckle_mode};
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
-    
+
     /// Agent mode - minimal output, strict validation
     #[arg(long, global = true)]
     agent: bool,
-    
+
     /// Verbose output (human mode only)
     #[arg(short, long, global = true)]
     verbose: bool,
-    
+
     /// Show what would be done without making changes
     #[arg(long, global = true)]
     dry_run: bool,
@@ -43,10 +43,10 @@ enum Commands {
         #[arg(short, long)]
         force: bool,
     },
-    
+
     /// Buckle Mode recovery operations
     BuckleMode(BuckleModeArgs),
-    
+
     /// Generate PSS score for a task
     Score {
         /// Task ID to score
@@ -55,50 +55,50 @@ enum Commands {
         #[arg(short, long, default_value = "table")]
         format: String,
     },
-    
+
     /// Display task details
     ShowTask {
         /// Task ID to display
         task_id: String,
     },
-    
+
     /// List logged lessons in readable format
     ShowLessons {
         /// Filter by tag
         #[arg(short, long)]
         tag: Option<String>,
     },
-    
+
     /// Show audit violations
     ShowAudit {
         /// Number of recent entries to show
         #[arg(short, long, default_value = "10")]
         limit: usize,
     },
-    
+
     /// Agent-oriented commands
     Agent {
         #[command(subcommand)]
         subcommand: AgentCommands,
     },
-    
+
     /// Check ROTD project health and compliance
     Check {
         /// Fix issues automatically where possible
         #[arg(short, long)]
         fix: bool,
-        
+
         /// Check if Buckle Mode trigger conditions are met
         #[arg(long)]
         buckle_trigger: bool,
     },
-    
+
     /// Generate shell completions
     Completions {
         /// Shell type: bash, zsh, fish, or powershell
         shell: String,
     },
-    
+
     /// Update ROTD methodology and templates
     Update {
         /// Check for updates without applying
@@ -108,7 +108,17 @@ enum Commands {
         #[arg(short, long)]
         yes: bool,
     },
-    
+
+    /// Upgrade ROTD CLI binary to latest version
+    Upgrade {
+        /// Check for upgrades without applying
+        #[arg(long)]
+        check: bool,
+        /// Skip confirmation prompts
+        #[arg(short, long)]
+        yes: bool,
+    },
+
     /// Show version information
     Version {
         /// Show project ROTD version
@@ -118,7 +128,7 @@ enum Commands {
         #[arg(long)]
         latest: bool,
     },
-    
+
     /// Validate ROTD artifacts
     Validate {
         /// Validate all schemas
@@ -131,7 +141,7 @@ enum Commands {
         #[arg(long)]
         strict: bool,
     },
-    
+
     /// Multi-agent coordination commands
     Coord {
         #[command(subcommand)]
@@ -156,21 +166,21 @@ enum AgentCommands {
         #[arg(long)]
         timestamp: bool,
     },
-    
+
     /// Append test summary
     AppendSummary {
         /// Test summary file path
         #[arg(short, long)]
         file: String,
     },
-    
+
     /// Log lesson learned from JSON input
     LogLesson {
         /// Read from file instead of stdin
         #[arg(short, long)]
         file: Option<String>,
     },
-    
+
     /// Update coverage ratchet
     RatchetCoverage {
         /// New coverage percentage
@@ -179,7 +189,7 @@ enum AgentCommands {
         #[arg(short, long)]
         task_id: Option<String>,
     },
-    
+
     /// Show minified command info for LLM agents
     Info,
 }
@@ -198,52 +208,52 @@ enum CoordCommands {
         #[arg(long)]
         any: bool,
     },
-    
+
     /// Release a claimed task
     Release {
         /// Task ID to release
         task_id: String,
     },
-    
+
     /// Approve a task in review status
     Approve {
         /// Task ID to approve
         task_id: String,
     },
-    
+
     /// Append message to coordination log
     Msg {
         /// Message to log
         message: String,
     },
-    
+
     /// Update agent heartbeat
     Beat,
-    
+
     /// Clean stale locks and rotate logs
     CleanStale {
         /// Timeout in seconds (default: 900)
         #[arg(long, default_value = "900")]
         timeout: u64,
     },
-    
+
     /// Update quota tracker
     Quota {
         /// Add tokens to quota
         #[arg(long)]
         add: Option<u64>,
     },
-    
+
     /// List current work registry
     Ls,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    
+
     // Agent mode automatically sets minimal output
     let is_agent_mode = cli.agent || matches!(cli.command, Commands::Agent { .. });
-    
+
     match cli.command {
         Commands::Init { force } => {
             if is_agent_mode {
@@ -252,7 +262,7 @@ fn main() -> Result<()> {
                 human::init(force, cli.dry_run, cli.verbose)
             }
         }
-        
+
         Commands::Score { task_id, format } => {
             if is_agent_mode {
                 agent::score(&task_id, &format)
@@ -260,40 +270,32 @@ fn main() -> Result<()> {
                 human::score(&task_id, &format, cli.verbose)
             }
         }
-        
-        Commands::ShowTask { task_id } => {
-            human::show_task(&task_id, cli.verbose)
-        }
-        
-        Commands::ShowLessons { tag } => {
-            human::show_lessons(tag.as_deref(), cli.verbose)
-        }
-        
-        Commands::ShowAudit { limit } => {
-            human::show_audit(limit, cli.verbose)
-        }
-        
-        Commands::Agent { subcommand } => {
-            match subcommand {
-                AgentCommands::UpdateTask { file, strict, pss, timestamp } => {
-                    agent::update_task(file.as_deref(), strict, pss, timestamp, cli.dry_run)
-                }
-                AgentCommands::AppendSummary { file } => {
-                    agent::append_summary(&file, cli.dry_run)
-                }
-                AgentCommands::LogLesson { file } => {
-                    agent::log_lesson(file.as_deref(), cli.dry_run)
-                }
-                AgentCommands::RatchetCoverage { coverage, task_id } => {
-                    agent::ratchet_coverage(coverage, task_id.as_deref(), cli.dry_run)
-                }
-                AgentCommands::Info => {
-                    agent::info()
-                }
+
+        Commands::ShowTask { task_id } => human::show_task(&task_id, cli.verbose),
+
+        Commands::ShowLessons { tag } => human::show_lessons(tag.as_deref(), cli.verbose),
+
+        Commands::ShowAudit { limit } => human::show_audit(limit, cli.verbose),
+
+        Commands::Agent { subcommand } => match subcommand {
+            AgentCommands::UpdateTask {
+                file,
+                strict,
+                pss,
+                timestamp,
+            } => agent::update_task(file.as_deref(), strict, pss, timestamp, cli.dry_run),
+            AgentCommands::AppendSummary { file } => agent::append_summary(&file, cli.dry_run),
+            AgentCommands::LogLesson { file } => agent::log_lesson(file.as_deref(), cli.dry_run),
+            AgentCommands::RatchetCoverage { coverage, task_id } => {
+                agent::ratchet_coverage(coverage, task_id.as_deref(), cli.dry_run)
             }
-        }
-        
-        Commands::Check { fix, buckle_trigger } => {
+            AgentCommands::Info => agent::info(),
+        },
+
+        Commands::Check {
+            fix,
+            buckle_trigger,
+        } => {
             if buckle_trigger {
                 if is_agent_mode {
                     agent::check_buckle_trigger()
@@ -306,11 +308,9 @@ fn main() -> Result<()> {
                 human::check(fix, cli.verbose)
             }
         }
-        
-        Commands::Completions { shell } => {
-            human::completions(&shell)
-        }
-        
+
+        Commands::Completions { shell } => human::completions(&shell),
+
         Commands::Update { check, yes } => {
             if is_agent_mode {
                 agent::update(check, yes)
@@ -318,7 +318,15 @@ fn main() -> Result<()> {
                 human::update(check, yes, cli.verbose)
             }
         }
-        
+
+        Commands::Upgrade { check, yes } => {
+            if is_agent_mode {
+                agent::upgrade(check, yes)
+            } else {
+                human::upgrade(check, yes, cli.verbose)
+            }
+        }
+
         Commands::Version { project, latest } => {
             if is_agent_mode {
                 agent::version(project, latest)
@@ -326,19 +334,21 @@ fn main() -> Result<()> {
                 human::version(project, latest, cli.verbose)
             }
         }
-        
-        Commands::BuckleMode(buckle_args) => {
-            handle_buckle_mode(&buckle_args)
-        }
-        
-        Commands::Validate { all, schema, strict } => {
+
+        Commands::BuckleMode(buckle_args) => handle_buckle_mode(&buckle_args),
+
+        Commands::Validate {
+            all,
+            schema,
+            strict,
+        } => {
             if is_agent_mode {
                 agent::validate(all, schema.as_deref(), strict)
             } else {
                 human::validate(all, schema.as_deref(), strict, cli.verbose)
             }
         }
-        
+
         Commands::Coord { subcommand } => {
             coord::handle_command(subcommand, is_agent_mode, cli.verbose)
         }

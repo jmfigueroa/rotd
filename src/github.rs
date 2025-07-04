@@ -2,6 +2,7 @@ use anyhow::Result;
 use reqwest::blocking::Client;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::time::Duration;
 
 /// GitHub repository owner and name
@@ -58,44 +59,56 @@ pub fn fetch_latest_release() -> Result<Option<ReleaseInfo>> {
 
     // Try to get the latest release
     let releases_url = github_releases_url();
-    let response = client.get(&releases_url).send()
-        .map_err(|e| {
-            if e.is_timeout() {
-                anyhow::anyhow!("Request timed out after 10 seconds. Check your internet connection.")
-            } else if e.is_connect() {
-                anyhow::anyhow!("Failed to connect to GitHub API. Check your internet connection and DNS.")
-            } else {
-                anyhow::anyhow!("Network error: {}", e)
-            }
-        })?;
+    let response = client.get(&releases_url).send().map_err(|e| {
+        if e.is_timeout() {
+            anyhow::anyhow!("Request timed out after 10 seconds. Check your internet connection.")
+        } else if e.is_connect() {
+            anyhow::anyhow!(
+                "Failed to connect to GitHub API. Check your internet connection and DNS."
+            )
+        } else {
+            anyhow::anyhow!("Network error: {}", e)
+        }
+    })?;
 
     if !response.status().is_success() {
         return Err(anyhow::anyhow!(
             "GitHub API returned error {}: {}. This might be due to rate limiting or service issues.",
             response.status().as_u16(),
-            response.status().canonical_reason().unwrap_or("Unknown error")
+            response
+                .status()
+                .canonical_reason()
+                .unwrap_or("Unknown error")
         ));
     }
 
-    let releases: Vec<GitHubRelease> = response.json()
+    let releases: Vec<GitHubRelease> = response
+        .json()
         .map_err(|e| anyhow::anyhow!("Failed to parse GitHub API response: {}", e))?;
-    
+
     if releases.is_empty() {
         return Ok(None);
     }
 
     // Get the most recent release
     let latest_release = &releases[0];
-    
+
     // Parse semver version from tag_name (removing 'v' prefix if present)
     let version_str = latest_release.tag_name.trim_start_matches('v');
-    let semver = Version::parse(version_str)
-        .map_err(|e| anyhow::anyhow!("Failed to parse version '{}' from release tag: {}", version_str, e))?;
+    let semver = Version::parse(version_str).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to parse version '{}' from release tag: {}",
+            version_str,
+            e
+        )
+    })?;
 
     // Find suitable download asset (if any)
-    let download_url = if let Some(asset) = latest_release.assets.iter().find(|a| {
-        a.name.ends_with(".tar.gz") || a.name.ends_with(".zip")
-    }) {
+    let download_url = if let Some(asset) = latest_release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".tar.gz") || a.name.ends_with(".zip"))
+    {
         asset.browser_download_url.clone()
     } else {
         latest_release.html_url.clone()
@@ -118,8 +131,13 @@ pub fn fetch_latest_release() -> Result<Option<ReleaseInfo>> {
 pub fn check_update() -> Result<(bool, Option<ReleaseInfo>)> {
     // Get current version from Cargo.toml
     let current_version = env!("CARGO_PKG_VERSION");
-    let current_semver = Version::parse(current_version)
-        .map_err(|e| anyhow::anyhow!("Failed to parse current version '{}': {}", current_version, e))?;
+    let current_semver = Version::parse(current_version).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to parse current version '{}': {}",
+            current_version,
+            e
+        )
+    })?;
 
     // Fetch latest release
     match fetch_latest_release()? {
@@ -135,12 +153,150 @@ pub fn check_update() -> Result<(bool, Option<ReleaseInfo>)> {
 pub fn extract_changes(body: &str) -> Vec<String> {
     body.lines()
         .filter(|line| {
-            line.trim().starts_with('-') || 
-            line.trim().starts_with('*') || 
-            line.trim().starts_with('+')
+            line.trim().starts_with('-')
+                || line.trim().starts_with('*')
+                || line.trim().starts_with('+')
         })
         .map(|line| line.trim().to_string())
         .collect()
+}
+
+/// Find the appropriate release asset for the current platform
+pub fn find_platform_asset(release: &ReleaseInfo) -> Result<GitHubAsset> {
+    // Get the current platform
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+
+    // Map platform to expected asset name patterns
+    let patterns = match (os, arch) {
+        ("linux", "x86_64") => vec!["x86_64-unknown-linux-gnu", "linux-x86_64", "linux-amd64"],
+        ("linux", "aarch64") => vec!["aarch64-unknown-linux-gnu", "linux-aarch64", "linux-arm64"],
+        ("macos", "x86_64") => vec!["x86_64-apple-darwin", "macos-x86_64", "darwin-x86_64"],
+        ("macos", "aarch64") => vec!["aarch64-apple-darwin", "macos-aarch64", "darwin-arm64"],
+        ("windows", "x86_64") => vec!["x86_64-pc-windows-msvc", "windows-x86_64", "windows-amd64"],
+        _ => return Err(anyhow::anyhow!("Unsupported platform: {}-{}", os, arch)),
+    };
+
+    // First try to fetch the actual release with assets
+    let release_detail = fetch_release_detail(&release.version)?;
+
+    // Look for assets matching our platform
+    for pattern in patterns {
+        if let Some(asset) = release_detail.assets.iter().find(|a| {
+            a.name.contains(pattern) && (a.name.ends_with(".tar.gz") || a.name.ends_with(".zip"))
+        }) {
+            return Ok(asset.clone());
+        }
+    }
+
+    // If no platform-specific asset found, try to find any binary asset
+    if let Some(asset) = release_detail.assets.iter().find(|a| {
+        a.name.contains("rotd") && (a.name.ends_with(".tar.gz") || a.name.ends_with(".zip"))
+    }) {
+        return Ok(asset.clone());
+    }
+
+    Err(anyhow::anyhow!(
+        "No suitable binary asset found for platform {}-{}",
+        os,
+        arch
+    ))
+}
+
+/// Fetch detailed release information including assets
+fn fetch_release_detail(version: &str) -> Result<GitHubRelease> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(30))
+        .user_agent("rotd-cli")
+        .build()?;
+
+    let release_url = format!(
+        "https://api.github.com/repos/{}/{}/releases/tags/{}",
+        GITHUB_REPO_OWNER, GITHUB_REPO_NAME, version
+    );
+
+    let response = client.get(&release_url).send()?;
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Failed to fetch release details: HTTP {}",
+            response.status()
+        ));
+    }
+
+    let release: GitHubRelease = response.json()?;
+    Ok(release)
+}
+
+/// Download binary from URL
+pub fn download_binary(url: &str) -> Result<Vec<u8>> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(300)) // 5 minutes for download
+        .user_agent("rotd-cli")
+        .build()?;
+
+    let response = client.get(url).send()?;
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Failed to download binary: HTTP {}",
+            response.status()
+        ));
+    }
+
+    let bytes = response.bytes()?;
+
+    // If it's a compressed file, extract it
+    if url.ends_with(".tar.gz") {
+        extract_tar_gz(&bytes)
+    } else if url.ends_with(".zip") {
+        extract_zip(&bytes)
+    } else {
+        Ok(bytes.to_vec())
+    }
+}
+
+/// Extract binary from tar.gz archive
+fn extract_tar_gz(data: &[u8]) -> Result<Vec<u8>> {
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
+    let decoder = GzDecoder::new(data);
+    let mut archive = Archive::new(decoder);
+
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?;
+
+        // Look for the rotd binary
+        if path.file_name().and_then(|n| n.to_str()) == Some("rotd") {
+            let mut buffer = Vec::new();
+            entry.read_to_end(&mut buffer)?;
+            return Ok(buffer);
+        }
+    }
+
+    Err(anyhow::anyhow!("No rotd binary found in tar.gz archive"))
+}
+
+/// Extract binary from zip archive
+fn extract_zip(data: &[u8]) -> Result<Vec<u8>> {
+    use std::io::Cursor;
+    use zip::ZipArchive;
+
+    let reader = Cursor::new(data);
+    let mut archive = ZipArchive::new(reader)?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+
+        // Look for the rotd binary
+        if file.name().ends_with("rotd") || file.name().ends_with("rotd.exe") {
+            let mut buffer = Vec::new();
+            std::io::copy(&mut file, &mut buffer)?;
+            return Ok(buffer);
+        }
+    }
+
+    Err(anyhow::anyhow!("No rotd binary found in zip archive"))
 }
 
 #[cfg(test)]
