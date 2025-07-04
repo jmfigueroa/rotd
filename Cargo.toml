@@ -1,6 +1,6 @@
 [package]
 name = "rotd"
-version = "1.3.3"
+version = "1.3.4"
 edition = "2021"
 description = "Runtime-Oriented Test Discipline CLI utility"
 authors = ["ROTD Team"]

@@ -206,7 +206,7 @@ impl LessonLearned {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProjectVersion {
     pub version: String,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub manifest_hash: Option<String>,
 }
 

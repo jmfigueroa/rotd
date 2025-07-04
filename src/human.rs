@@ -70,7 +70,7 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
         let v: ProjectVersion = read_json(&version_path)?;
         v.version
     } else {
-        "1.3.1".to_string()
+        "1.3.3".to_string()
     };
 
     // Check for methodology updates
@@ -356,7 +356,7 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.3.1".to_string()
+            "1.3.3".to_string()
         };
 
         println!("Project ROTD version: {}", version.green());
@@ -397,7 +397,7 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
                     let v: ProjectVersion = read_json(&version_path)?;
                     v.version
                 } else {
-                    "1.3.1".to_string() // Default if not tracked
+                    "1.3.3".to_string() // Default if not tracked
                 };
 
                 println!("Project ROTD version: {}", project_version.green());
@@ -490,9 +490,9 @@ fn create_initial_files(verbose: bool) -> Result<()> {
 
     // Create version tracking
     let version = ProjectVersion {
-        version: "1.3.1".to_string(),
+        version: "1.3.3".to_string(),
         manifest_hash: None,
-        updated_at: chrono::Utc::now(),
+        updated_at: Some(chrono::Utc::now()),
     };
 
     if verbose {

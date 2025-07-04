@@ -481,7 +481,7 @@ pub fn check(fix: bool) -> Result<()> {
 pub fn info() -> Result<()> {
     let info = serde_json::json!({
         "rotd_cli": {
-            "version": "1.3.1",
+            "version": "1.3.3",
             "agent_commands": {
                 "update_task": {
                     "usage": "rotd agent update-task [--file FILE] [--strict] [--pss] [--timestamp]",
@@ -861,7 +861,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.3.1".to_string()
+            "1.3.3".to_string()
         };
 
         let result = serde_json::json!({
@@ -892,7 +892,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.3.1".to_string()
+            "1.3.3".to_string()
         };
 
         // Get latest version from GitHub
