@@ -1548,4 +1548,258 @@ pub fn show_help(verbose: bool) -> Result<()> {
     Ok(())
 }
 
+// Primer management functions
+pub fn primer_init(force: bool, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let primer_path = crate::common::rotd_path().join("primer.jsonc");
+    
+    if primer_path.exists() && !force {
+        if !dialoguer::Confirm::new()
+            .with_prompt("Primer already exists. Overwrite?")
+            .default(false)
+            .interact()?
+        {
+            println!("{}", "Primer initialization cancelled.".yellow());
+            return Ok(());
+        }
+    }
+    
+    println!("{}", "Initializing project primer...".cyan());
+    
+    // Detect basic project information
+    let project_name = std::env::current_dir()?
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+    
+    // Detect language based on files present
+    let language = if std::path::Path::new("Cargo.toml").exists() {
+        "Rust"
+    } else if std::path::Path::new("package.json").exists() {
+        "JavaScript/TypeScript"
+    } else if std::path::Path::new("requirements.txt").exists() || std::path::Path::new("setup.py").exists() {
+        "Python"
+    } else {
+        "Unknown"
+    };
+    
+    // Find entry points
+    let entry_points = match language {
+        "Rust" => vec!["src/main.rs", "src/lib.rs"],
+        "JavaScript/TypeScript" => vec!["index.js", "src/index.js", "src/main.ts"],
+        "Python" => vec!["main.py", "app.py", "__main__.py"],
+        _ => vec!["main"],
+    }.into_iter().filter(|&path| std::path::Path::new(path).exists()).map(|s| s.to_string()).collect();
+    
+    // Find test directories
+    let test_dirs = vec!["tests/", "test/", "spec/", "src/"]
+        .into_iter()
+        .filter(|&path| std::path::Path::new(path).exists())
+        .map(|s| s.to_string())
+        .collect();
+    
+    let primer = ProjectPrimer {
+        name: project_name,
+        scope: "root".to_string(),
+        description: "TODO: Add project description".to_string(),
+        status: "active".to_string(),
+        language: language.to_string(),
+        entry_points,
+        test_dirs,
+        dependencies: vec![], // TODO: Could parse from Cargo.toml, package.json, etc.
+        known_issues: vec![],
+        key_concepts: vec![],
+        preferred_agents: Some(vec!["Claude Sonnet".to_string()]),
+        suggested_starting_points: vec!["TODO: Add suggested starting points".to_string()],
+        major_components: None,
+        update_triggers: Some(vec![
+            "Major architectural changes".to_string(),
+            "New dependencies added".to_string(),
+            "Significant code restructuring".to_string(),
+        ]),
+    };
+    
+    // Convert to pretty JSON
+    let json_content = serde_json::to_string_pretty(&primer)?;
+    std::fs::write(&primer_path, json_content)?;
+    
+    println!("{}", "✓ Primer initialized successfully!".green());
+    println!("   Location: {}", primer_path.display().to_string().cyan());
+    
+    if verbose {
+        println!("\nNext steps:");
+        println!("  1. Edit {} to add project description", primer_path.display());
+        println!("  2. Add key concepts and dependencies");
+        println!("  3. Update suggested starting points");
+        println!("  4. Run {} to validate", "rotd primer check".cyan());
+    }
+    
+    Ok(())
+}
+
+pub fn primer_show(file: Option<&str>, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let primer_path = match file {
+        Some(f) => crate::common::rotd_path().join(f),
+        None => crate::common::rotd_path().join("primer.jsonc"),
+    };
+    
+    if !primer_path.exists() {
+        println!("{}", format!("Primer file not found: {}", primer_path.display()).red());
+        println!("Run {} to create one.", "rotd primer init".cyan());
+        return Ok(());
+    }
+    
+    let content = std::fs::read_to_string(&primer_path)?;
+    
+    if verbose {
+        println!("{}", format!("Primer: {}", primer_path.display()).cyan().bold());
+        println!();
+    }
+    
+    println!("{}", content);
+    
+    Ok(())
+}
+
+pub fn primer_check(verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let primer_path = crate::common::rotd_path().join("primer.jsonc");
+    
+    if !primer_path.exists() {
+        println!("{}", "✗ No primer.jsonc found".red());
+        println!("Run {} to create one.", "rotd primer init".cyan());
+        return Ok(());
+    }
+    
+    println!("{}", "Checking primer...".cyan());
+    
+    // Try to parse the primer
+    let content = std::fs::read_to_string(&primer_path)?;
+    let primer: ProjectPrimer = serde_json::from_str(&content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse primer.jsonc: {}", e))?;
+    
+    let mut issues = Vec::new();
+    let mut warnings = Vec::new();
+    
+    // Check for TODO placeholders
+    if primer.description.contains("TODO") {
+        warnings.push("Description contains TODO placeholder");
+    }
+    
+    if primer.suggested_starting_points.iter().any(|s| s.contains("TODO")) {
+        warnings.push("Suggested starting points contain TODO placeholders");
+    }
+    
+    // Check if entry points exist
+    for entry_point in &primer.entry_points {
+        if !std::path::Path::new(entry_point).exists() {
+            issues.push(format!("Entry point does not exist: {}", entry_point));
+        }
+    }
+    
+    // Check if test directories exist
+    for test_dir in &primer.test_dirs {
+        if !std::path::Path::new(test_dir).exists() {
+            warnings.push("Test directory does not exist");
+        }
+    }
+    
+    // Check if key concepts are provided
+    if primer.key_concepts.is_empty() {
+        warnings.push("No key concepts defined");
+    }
+    
+    // Report results
+    if issues.is_empty() && warnings.is_empty() {
+        println!("{}", "✓ Primer validation passed!".green());
+    } else {
+        if !issues.is_empty() {
+            println!("{}", "Issues found:".red());
+            for issue in &issues {
+                println!("  ✗ {}", issue.red());
+            }
+        }
+        
+        if !warnings.is_empty() {
+            println!("{}", "Warnings:".yellow());
+            for warning in &warnings {
+                println!("  ⚠ {}", warning.yellow());
+            }
+        }
+    }
+    
+    if verbose {
+        println!("\nPrimer summary:");
+        println!("  Name: {}", primer.name);
+        println!("  Language: {}", primer.language);
+        println!("  Entry points: {}", primer.entry_points.len());
+        println!("  Test directories: {}", primer.test_dirs.len());
+        println!("  Key concepts: {}", primer.key_concepts.len());
+    }
+    
+    Ok(())
+}
+
+pub fn primer_parse(format: &str, verbose: bool) -> Result<()> {
+    check_rotd_initialized()?;
+    
+    let primer_path = crate::common::rotd_path().join("primer.jsonc");
+    
+    if !primer_path.exists() {
+        println!("{}", "No primer.jsonc found".red());
+        return Ok(());
+    }
+    
+    let content = std::fs::read_to_string(&primer_path)?;
+    let primer: ProjectPrimer = serde_json::from_str(&content)?;
+    
+    match format {
+        "json" => {
+            println!("{}", serde_json::to_string_pretty(&primer)?);
+        }
+        "summary" => {
+            println!("{}", format!("Project: {}", primer.name).cyan().bold());
+            println!("Description: {}", primer.description);
+            println!("Language: {}", primer.language);
+            
+            if !primer.key_concepts.is_empty() {
+                println!("\nKey Concepts:");
+                for concept in &primer.key_concepts {
+                    println!("  - {}", concept);
+                }
+            }
+            
+            if !primer.suggested_starting_points.is_empty() {
+                println!("\nSuggested Starting Points:");
+                for point in &primer.suggested_starting_points {
+                    println!("  - {}", point);
+                }
+            }
+            
+            if verbose {
+                println!("\nEntry Points: {}", primer.entry_points.join(", "));
+                println!("Test Directories: {}", primer.test_dirs.join(", "));
+                
+                if !primer.known_issues.is_empty() {
+                    println!("\nKnown Issues:");
+                    for issue in &primer.known_issues {
+                        println!("  - {}", issue);
+                    }
+                }
+            }
+        }
+        _ => {
+            println!("{}", format!("Unknown format: {}", format).red());
+            return Ok(());
+        }
+    }
+    
+    Ok(())
+}
+
 // Additional utility functions as needed

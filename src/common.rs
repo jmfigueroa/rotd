@@ -43,7 +43,9 @@ pub fn audit_log_path() -> PathBuf {
 
 #[allow(dead_code)]
 pub fn active_work_registry_path() -> PathBuf {
-    rotd_path().join(COORDINATION_DIR).join(ACTIVE_WORK_REGISTRY_FILE)
+    rotd_path()
+        .join(COORDINATION_DIR)
+        .join(ACTIVE_WORK_REGISTRY_FILE)
 }
 
 pub fn test_summaries_path() -> PathBuf {
@@ -56,7 +58,9 @@ pub fn test_summary_file(task_id: &str) -> PathBuf {
 
 pub fn check_rotd_initialized() -> anyhow::Result<()> {
     if !rotd_path().exists() {
-        return Err(anyhow::anyhow!("No .rotd directory found. Run 'rotd init' first."));
+        return Err(anyhow::anyhow!(
+            "No .rotd directory found. Run 'rotd init' first."
+        ));
     }
     Ok(())
 }

@@ -14,22 +14,22 @@ pub enum BuckleModeCommands {
         /// Task ID to fix
         task_id: String,
     },
-    
+
     /// Generate diagnostic report for current state
     Diagnose,
-    
+
     /// Fix compilation errors
     #[clap(name = "fix-compilation")]
     FixCompilation,
-    
+
     /// Fix missing artifacts
     #[clap(name = "fix-artifacts")]
     FixArtifacts,
-    
+
     /// Check if exit criteria are met
     #[clap(name = "check-exit")]
     CheckExit,
-    
+
     /// Exit Buckle Mode
     Exit,
 }
@@ -60,8 +60,8 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
-        
+        }
+
         BuckleModeCommands::Diagnose => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
@@ -75,8 +75,8 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
-        
+        }
+
         BuckleModeCommands::FixCompilation => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
@@ -90,8 +90,8 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
-        
+        }
+
         BuckleModeCommands::FixArtifacts => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
@@ -105,8 +105,8 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
-        
+        }
+
         BuckleModeCommands::CheckExit => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
@@ -120,8 +120,8 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
-        
+        }
+
         BuckleModeCommands::Exit => {
             // Check if in agent mode
             if std::env::args().any(|arg| arg == "--agent") {
@@ -135,14 +135,14 @@ pub fn handle_buckle_mode(args: &BuckleModeArgs) -> anyhow::Result<()> {
                     Err(e) => Err(anyhow::anyhow!(e.to_string())),
                 }
             }
-        },
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_buckle_mode_state_serialization() {
         let state = BuckleModeState {
@@ -153,11 +153,11 @@ mod tests {
             artifacts_fixed: false,
             exit_criteria_met: false,
         };
-        
+
         let json = serde_json::to_string(&state).unwrap();
         assert!(json.contains("active"));
         assert!(json.contains("task_id"));
-        
+
         let deserialized: BuckleModeState = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.active, true);
         assert_eq!(deserialized.task_id, Some("6.2".to_string()));

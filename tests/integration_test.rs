@@ -24,13 +24,13 @@ fn test_agent_info_command() {
 fn test_init_command() {
     let temp_dir = TempDir::new().unwrap();
     let mut cmd = Command::cargo_bin("rotd").unwrap();
-    
+
     cmd.current_dir(&temp_dir)
         .arg("init")
         .arg("--force")
         .assert()
         .success();
-    
+
     // Check that .rotd directory was created
     assert!(temp_dir.path().join(".rotd").exists());
     assert!(temp_dir.path().join(".rotd/tasks.jsonl").exists());
@@ -41,7 +41,7 @@ fn test_init_command() {
 fn test_check_command_without_init() {
     let temp_dir = TempDir::new().unwrap();
     let mut cmd = Command::cargo_bin("rotd").unwrap();
-    
+
     cmd.current_dir(&temp_dir)
         .arg("check")
         .assert()
@@ -52,15 +52,16 @@ fn test_check_command_without_init() {
 #[test]
 fn test_agent_update_task_dry_run() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Initialize first
     let mut init_cmd = Command::cargo_bin("rotd").unwrap();
-    init_cmd.current_dir(&temp_dir)
+    init_cmd
+        .current_dir(&temp_dir)
         .arg("init")
         .arg("--force")
         .assert()
         .success();
-    
+
     // Test update task with dry run
     let mut cmd = Command::cargo_bin("rotd").unwrap();
     cmd.current_dir(&temp_dir)
@@ -73,15 +74,16 @@ fn test_agent_update_task_dry_run() {
 #[test]
 fn test_agent_update_task_invalid_json() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Initialize first
     let mut init_cmd = Command::cargo_bin("rotd").unwrap();
-    init_cmd.current_dir(&temp_dir)
+    init_cmd
+        .current_dir(&temp_dir)
         .arg("init")
         .arg("--force")
         .assert()
         .success();
-    
+
     // Test with invalid JSON
     let mut cmd = Command::cargo_bin("rotd").unwrap();
     cmd.current_dir(&temp_dir)
@@ -95,7 +97,7 @@ fn test_agent_update_task_invalid_json() {
 #[test]
 fn test_agent_mode_flag() {
     let temp_dir = TempDir::new().unwrap();
-    
+
     // Test agent mode with init
     let mut cmd = Command::cargo_bin("rotd").unwrap();
     cmd.current_dir(&temp_dir)

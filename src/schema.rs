@@ -76,7 +76,7 @@ impl Priority {
             Priority::Deferred => "deferred",
         }
     }
-    
+
     pub fn normal(&self) -> colored::ColoredString {
         match self {
             Priority::Urgent => "Urgent".red().bold(),
@@ -172,7 +172,7 @@ impl TaskEntry {
         }
         Ok(())
     }
-    
+
     pub fn update_timestamp(&mut self) {
         self.updated_at = Some(Utc::now());
     }
@@ -250,4 +250,29 @@ pub struct ValidationResult {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
     pub items_checked: u32,
+}
+
+// Primer-related structures
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectPrimer {
+    pub name: String,
+    pub scope: String,
+    pub description: String,
+    pub status: String,
+    pub language: String,
+    pub entry_points: Vec<String>,
+    pub test_dirs: Vec<String>,
+    pub dependencies: Vec<String>,
+    pub known_issues: Vec<String>,
+    pub key_concepts: Vec<String>,
+    pub preferred_agents: Option<Vec<String>>,
+    pub suggested_starting_points: Vec<String>,
+    pub major_components: Option<HashMap<String, ComponentInfo>>,
+    pub update_triggers: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ComponentInfo {
+    pub description: String,
+    pub files: Vec<String>,
 }

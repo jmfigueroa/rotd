@@ -1,4 +1,3 @@
-
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
@@ -16,7 +15,11 @@ where
     use fs2::FileExt;
     let lock_path = Path::new(path.as_ref());
     std::fs::create_dir_all(lock_path.parent().unwrap())?;
-    let file = OpenOptions::new().read(true).write(true).create(true).open(lock_path)?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(lock_path)?;
     let start = Instant::now();
     while file.try_lock_exclusive().is_err() {
         if start.elapsed() > Duration::from_secs(30) {
@@ -37,7 +40,11 @@ where
     use fs2::FileExt;
     let lock_path = Path::new(path.as_ref());
     std::fs::create_dir_all(lock_path.parent().unwrap())?;
-    let file = OpenOptions::new().read(true).write(true).create(true).open(lock_path)?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(lock_path)?;
     let start = Instant::now();
     while file.try_lock_exclusive().is_err() {
         if start.elapsed() > Duration::from_secs(30) {
@@ -50,7 +57,6 @@ where
     res
 }
 
-
 pub fn read_jsonl<T>(file_path: &Path) -> Result<Vec<T>>
 where
     T: for<'de> Deserialize<'de>,
@@ -59,8 +65,8 @@ where
         return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(file_path)
-        .context(format!("Failed to read {}", file_path.display()))?;
+    let content =
+        fs::read_to_string(file_path).context(format!("Failed to read {}", file_path.display()))?;
 
     let mut items = Vec::new();
     for (line_num, line) in content.lines().enumerate() {
@@ -68,9 +74,12 @@ where
             continue;
         }
 
-        let item: T = serde_json::from_str(line)
-            .context(format!("Invalid JSON on line {} in {}", line_num + 1, file_path.display()))?;
-        
+        let item: T = serde_json::from_str(line).context(format!(
+            "Invalid JSON on line {} in {}",
+            line_num + 1,
+            file_path.display()
+        ))?;
+
         items.push(item);
     }
 
@@ -84,12 +93,10 @@ where
     with_lock(file_path, || {
         // Ensure parent directory exists
         if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent)
-                .context("Failed to create parent directory")?;
+            fs::create_dir_all(parent).context("Failed to create parent directory")?;
         }
 
-        let json_line = serde_json::to_string(item)
-            .context("Failed to serialize item")?;
+        let json_line = serde_json::to_string(item).context("Failed to serialize item")?;
 
         let mut file = fs::OpenOptions::new()
             .create(true)
@@ -97,8 +104,7 @@ where
             .open(file_path)
             .context("Failed to open file for appending")?;
 
-        writeln!(file, "{}", json_line)
-            .context("Failed to write to file")?;
+        writeln!(file, "{}", json_line).context("Failed to write to file")?;
 
         Ok(())
     })
@@ -111,15 +117,13 @@ where
     with_lock(file_path, || {
         // Ensure parent directory exists
         if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent)
-                .context("Failed to create parent directory")?;
+            fs::create_dir_all(parent).context("Failed to create parent directory")?;
         }
 
-        let json_content = serde_json::to_string_pretty(item)
-            .context("Failed to serialize item")?;
+        let json_content =
+            serde_json::to_string_pretty(item).context("Failed to serialize item")?;
 
-        fs::write(file_path, json_content)
-            .context("Failed to write file")?;
+        fs::write(file_path, json_content).context("Failed to write file")?;
 
         Ok(())
     })
@@ -129,8 +133,8 @@ pub fn read_json<T>(file_path: &Path) -> Result<T>
 where
     T: for<'de> Deserialize<'de>,
 {
-    let content = fs::read_to_string(file_path)
-        .context(format!("Failed to read {}", file_path.display()))?;
+    let content =
+        fs::read_to_string(file_path).context(format!("Failed to read {}", file_path.display()))?;
 
     serde_json::from_str(&content)
         .context(format!("Failed to parse JSON from {}", file_path.display()))
@@ -140,8 +144,7 @@ pub fn append_line(file_path: &Path, line: &str) -> Result<()> {
     with_lock(file_path, || {
         // Ensure parent directory exists
         if let Some(parent) = file_path.parent() {
-            fs::create_dir_all(parent)
-                .context("Failed to create parent directory")?;
+            fs::create_dir_all(parent).context("Failed to create parent directory")?;
         }
 
         let mut file = fs::OpenOptions::new()
@@ -150,8 +153,7 @@ pub fn append_line(file_path: &Path, line: &str) -> Result<()> {
             .open(file_path)
             .context("Failed to open file for appending")?;
 
-        writeln!(file, "{}", line)
-            .context("Failed to write to file")?;
+        writeln!(file, "{}", line).context("Failed to write to file")?;
 
         Ok(())
     })
@@ -160,7 +162,8 @@ pub fn append_line(file_path: &Path, line: &str) -> Result<()> {
 pub fn read_stdin() -> Result<String> {
     use std::io::Read;
     let mut buffer = String::new();
-    std::io::stdin().read_to_string(&mut buffer)
+    std::io::stdin()
+        .read_to_string(&mut buffer)
         .context("Failed to read from stdin")?;
     Ok(buffer.trim().to_string())
 }
@@ -168,7 +171,7 @@ pub fn read_stdin() -> Result<String> {
 // Safe file operations with validation
 pub fn safe_update_task(task: &TaskEntry, dry_run: bool) -> Result<()> {
     task.validate()?;
-    
+
     if dry_run {
         println!("Would update task: {}", serde_json::to_string_pretty(task)?);
         return Ok(());
@@ -179,9 +182,9 @@ pub fn safe_update_task(task: &TaskEntry, dry_run: bool) -> Result<()> {
 
 pub fn safe_append_summary(summary: &TestSummary, dry_run: bool) -> Result<()> {
     summary.validate()?;
-    
+
     let file_path = crate::common::test_summary_file(&summary.task_id);
-    
+
     if dry_run {
         println!("Would write test summary to: {}", file_path.display());
         println!("{}", serde_json::to_string_pretty(summary)?);
@@ -193,9 +196,12 @@ pub fn safe_append_summary(summary: &TestSummary, dry_run: bool) -> Result<()> {
 
 pub fn safe_log_lesson(lesson: &LessonLearned, dry_run: bool) -> Result<()> {
     lesson.validate()?;
-    
+
     if dry_run {
-        println!("Would append lesson: {}", serde_json::to_string_pretty(lesson)?);
+        println!(
+            "Would append lesson: {}",
+            serde_json::to_string_pretty(lesson)?
+        );
         return Ok(());
     }
 

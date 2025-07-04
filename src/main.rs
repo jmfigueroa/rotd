@@ -147,6 +147,12 @@ enum Commands {
         #[command(subcommand)]
         subcommand: CoordCommands,
     },
+
+    /// Project primer management commands
+    Primer {
+        #[command(subcommand)]
+        subcommand: PrimerCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -246,6 +252,33 @@ enum CoordCommands {
 
     /// List current work registry
     Ls,
+}
+
+#[derive(Subcommand)]
+enum PrimerCommands {
+    /// Initialize primer for current project
+    Init {
+        /// Force overwrite existing primer
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Show current primer content
+    Show {
+        /// Show specific primer file
+        #[arg(short, long)]
+        file: Option<String>,
+    },
+
+    /// Validate primer against current project state
+    Check,
+
+    /// Parse primer and output structured information for agents
+    Parse {
+        /// Output format: json or summary
+        #[arg(short, long, default_value = "json")]
+        format: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -351,6 +384,37 @@ fn main() -> Result<()> {
 
         Commands::Coord { subcommand } => {
             coord::handle_command(subcommand, is_agent_mode, cli.verbose)
+        }
+
+        Commands::Primer { subcommand } => match subcommand {
+            PrimerCommands::Init { force } => {
+                if is_agent_mode {
+                    agent::primer_init(force)
+                } else {
+                    human::primer_init(force, cli.verbose)
+                }
+            }
+            PrimerCommands::Show { file } => {
+                if is_agent_mode {
+                    agent::primer_show(file.as_deref())
+                } else {
+                    human::primer_show(file.as_deref(), cli.verbose)
+                }
+            }
+            PrimerCommands::Check => {
+                if is_agent_mode {
+                    agent::primer_check()
+                } else {
+                    human::primer_check(cli.verbose)
+                }
+            }
+            PrimerCommands::Parse { format } => {
+                if is_agent_mode {
+                    agent::primer_parse(&format)
+                } else {
+                    human::primer_parse(&format, cli.verbose)
+                }
+            }
         }
     }
 }

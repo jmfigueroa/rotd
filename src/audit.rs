@@ -4,7 +4,12 @@ use chrono::Utc;
 use crate::fs_ops::append_line;
 use crate::schema::AuditEntry;
 
-pub fn log_violation(task_id: Option<&str>, rule: &str, severity: &str, message: &str) -> Result<()> {
+pub fn log_violation(
+    task_id: Option<&str>,
+    rule: &str,
+    severity: &str,
+    message: &str,
+) -> Result<()> {
     let entry = AuditEntry {
         timestamp: Utc::now(),
         task_id: task_id.map(|s| s.to_string()),
@@ -46,7 +51,7 @@ pub fn log_entry(task_id: &str, rule: &str, severity: &str, message: &str) -> Re
 #[allow(dead_code)]
 pub fn read_audit_log(limit: usize) -> Result<Vec<String>> {
     let audit_path = crate::common::audit_log_path();
-    
+
     if !audit_path.exists() {
         return Ok(Vec::new());
     }
@@ -58,6 +63,6 @@ pub fn read_audit_log(limit: usize) -> Result<Vec<String>> {
         .take(limit)
         .map(|s| s.to_string())
         .collect();
-    
+
     Ok(lines)
 }

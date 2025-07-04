@@ -2,6 +2,10 @@
 
 > Test-driven development optimized for LLM workflows, where runtime validation is the single source of truth.
 
+## Why create this?
+
+I needed a way to ensure continuity and effective code output across multiple sessions (even with Claude Max) and with various Agents. It's a struggle to get *one* LLM to perform well in isolation for complex tasks, requiring context retention, consistent task boundaries, and verifiable progress across time. This is doubly hard when trying to orchestrate multiple concurrent agents. This is my attempt to mitigate those problems by enabling agents to inherit context reliably, validate outcomes through runtime tests, and avoid redundant effort, all while keeping the overall system focused, aligned, and durable.
+
 ## Quick Start
 
 ### Option 1: CLI Installation (Recommended)
