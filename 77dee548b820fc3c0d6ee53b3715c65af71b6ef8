@@ -1,0 +1,30 @@
+# Enhanced GitHub Actions Release Workflow
+
+Improves automated release creation with comprehensive platform support and detailed release descriptions.
+
+## Changes Made
+
+- **Enhanced release description** - Added ROTD overview and multi-agent coordination explanation
+- **Multi-platform builds** - Support for Linux (x86_64, ARM64), macOS (x86_64, ARM64), Windows (x86_64)
+- **Proper archives** - Creates tar.gz for Unix and zip for Windows with correct naming
+- **Cross-compilation** - Added ARM64 Linux support with proper toolchain setup
+- **Descriptive titles** - Release titles now follow "ROTD vX.Y.Z: Enhanced Agent Info with Multi-Agent Coordination" format
+
+## Technical Details
+
+- Uses matrix strategy for parallel builds across 5 platforms
+- Automatic archive creation with platform-specific formats
+- Cross-compilation setup for ARM64 Linux
+- Comprehensive release notes including installation and usage instructions
+
+## Impact
+
+Users can now automatically get releases with proper platform detection and the upgrade command will work seamlessly across all supported platforms.
+
+## ROTD Task Reference
+
+Task-ID: 2.1-github-actions
+
+## Test Coverage
+
+Workflow will be tested with v1.3.2 tag creation.
