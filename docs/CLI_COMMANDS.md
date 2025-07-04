@@ -79,9 +79,10 @@ rotd buckle-mode exit                # Exit Buckle Mode
 Updates ROTD methodology from remote repository.
 
 ```bash
-rotd update          # Update with confirmation
-rotd update --yes    # Skip confirmation prompts
-rotd update --check  # Check for available updates
+rotd update                    # Update with confirmation
+rotd update --yes              # Skip confirmation prompts
+rotd update --check            # Check for available updates
+rotd update --check --verbose  # Check with detailed error information
 ```
 
 **Updates:**

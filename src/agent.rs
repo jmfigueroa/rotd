@@ -472,7 +472,20 @@ pub fn update(check_only: bool, _skip_confirmation: bool) -> Result<()> {
     let current_version = env!("CARGO_PKG_VERSION");
     
     // Check for updates
-    let (update_available, latest_release) = github::check_update()?;
+    let (update_available, latest_release) = match github::check_update() {
+        Ok((available, release)) => (available, release),
+        Err(e) => {
+            let result = serde_json::json!({
+                "action": "check_updates",
+                "error": format!("Failed to fetch latest version: {}", e),
+                "current_version": current_version,
+                "latest_version": "unknown",
+                "update_available": false
+            });
+            println!("{}", serde_json::to_string(&result)?);
+            return Ok(());
+        }
+    };
     
     if check_only {
         if let Some(latest) = latest_release {
@@ -613,9 +626,10 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
         };
         
         // Get latest version from GitHub
-        let (update_available, latest_version) = match github::check_update()? {
-            (available, Some(release)) => (available, release.version),
-            _ => (false, "unknown".to_string())
+        let (update_available, latest_version) = match github::check_update() {
+            Ok((available, Some(release))) => (available, release.version),
+            Ok((_, None)) => (false, "no-releases".to_string()),
+            Err(_) => (false, "fetch-error".to_string())
         };
         
         let result = serde_json::json!({

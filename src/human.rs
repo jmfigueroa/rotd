@@ -63,7 +63,25 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
     
     // Check for updates
     println!("{}", "Checking for ROTD updates...".cyan());
-    let (update_available, latest_release) = github::check_update()?;
+    
+    let (update_available, latest_release) = match github::check_update() {
+        Ok((available, release)) => (available, release),
+        Err(e) => {
+            println!("   {} Could not fetch latest version.", "!".yellow());
+            println!("   Reason: {}", e);
+            
+            if verbose {
+                println!("   
+   Common solutions:
+   - Check your internet connection
+   - Try again in a few minutes (GitHub API may be rate limited)
+   - Check if you can access https://api.github.com/repos/jmfigueroa/rotd/releases
+   - If behind a corporate firewall, you may need to configure proxy settings");
+            }
+            
+            return Ok(());
+        }
+    };
     
     if check_only {
         // Display current and latest versions
@@ -86,7 +104,7 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
                 println!("   {} You have the latest version.", "✓".green());
             }
         } else {
-            println!("   {} Could not fetch latest version.", "!".yellow());
+            println!("   {} No releases found on GitHub.", "!".yellow());
         }
         
         return Ok(());
@@ -225,16 +243,25 @@ pub fn version(project: bool, latest: bool, verbose: bool) -> Result<()> {
                 // Check for latest version
                 if verbose {
                     println!("\nChecking for updates...");
-                    let (update_available, latest_release) = github::check_update()?;
                     
-                    if let Some(latest) = latest_release {
-                        println!("Latest available version: {}", latest.version.green());
-                        
-                        if update_available {
-                            println!("\n{}", "Update available!".yellow());
-                            println!("Run {} to update", "rotd update".cyan());
-                        } else {
-                            println!("\n{}", "You have the latest version".green());
+                    match github::check_update() {
+                        Ok((update_available, latest_release)) => {
+                            if let Some(latest) = latest_release {
+                                println!("Latest available version: {}", latest.version.green());
+                                
+                                if update_available {
+                                    println!("\n{}", "Update available!".yellow());
+                                    println!("Run {} to update", "rotd update".cyan());
+                                } else {
+                                    println!("\n{}", "You have the latest version".green());
+                                }
+                            } else {
+                                println!("No releases found on GitHub.");
+                            }
+                        }
+                        Err(e) => {
+                            println!("Could not fetch latest version information.");
+                            println!("Reason: {}", e);
                         }
                     }
                 }

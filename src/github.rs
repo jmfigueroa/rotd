@@ -53,20 +53,32 @@ pub fn fetch_latest_release() -> Result<Option<ReleaseInfo>> {
     let client = Client::builder()
         .timeout(Duration::from_secs(10))
         .user_agent("rotd-cli")
-        .build()?;
+        .build()
+        .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {}", e))?;
 
     // Try to get the latest release
     let releases_url = github_releases_url();
-    let response = client.get(&releases_url).send()?;
+    let response = client.get(&releases_url).send()
+        .map_err(|e| {
+            if e.is_timeout() {
+                anyhow::anyhow!("Request timed out after 10 seconds. Check your internet connection.")
+            } else if e.is_connect() {
+                anyhow::anyhow!("Failed to connect to GitHub API. Check your internet connection and DNS.")
+            } else {
+                anyhow::anyhow!("Network error: {}", e)
+            }
+        })?;
 
     if !response.status().is_success() {
         return Err(anyhow::anyhow!(
-            "Failed to fetch releases: {}",
-            response.status()
+            "GitHub API returned error {}: {}. This might be due to rate limiting or service issues.",
+            response.status().as_u16(),
+            response.status().canonical_reason().unwrap_or("Unknown error")
         ));
     }
 
-    let releases: Vec<GitHubRelease> = response.json()?;
+    let releases: Vec<GitHubRelease> = response.json()
+        .map_err(|e| anyhow::anyhow!("Failed to parse GitHub API response: {}", e))?;
     
     if releases.is_empty() {
         return Ok(None);
@@ -77,7 +89,8 @@ pub fn fetch_latest_release() -> Result<Option<ReleaseInfo>> {
     
     // Parse semver version from tag_name (removing 'v' prefix if present)
     let version_str = latest_release.tag_name.trim_start_matches('v');
-    let semver = Version::parse(version_str)?;
+    let semver = Version::parse(version_str)
+        .map_err(|e| anyhow::anyhow!("Failed to parse version '{}' from release tag: {}", version_str, e))?;
 
     // Find suitable download asset (if any)
     let download_url = if let Some(asset) = latest_release.assets.iter().find(|a| {
@@ -105,7 +118,8 @@ pub fn fetch_latest_release() -> Result<Option<ReleaseInfo>> {
 pub fn check_update() -> Result<(bool, Option<ReleaseInfo>)> {
     // Get current version from Cargo.toml
     let current_version = env!("CARGO_PKG_VERSION");
-    let current_semver = Version::parse(current_version)?;
+    let current_semver = Version::parse(current_version)
+        .map_err(|e| anyhow::anyhow!("Failed to parse current version '{}': {}", current_version, e))?;
 
     // Fetch latest release
     match fetch_latest_release()? {
