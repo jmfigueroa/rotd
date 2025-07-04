@@ -5,6 +5,7 @@ mod agent;
 mod audit;
 mod cli;
 mod common;
+mod coord;
 mod fs_ops;
 mod github;
 mod human;
@@ -130,6 +131,12 @@ enum Commands {
         #[arg(long)]
         strict: bool,
     },
+    
+    /// Multi-agent coordination commands
+    Coord {
+        #[command(subcommand)]
+        subcommand: CoordCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -175,6 +182,60 @@ enum AgentCommands {
     
     /// Show minified command info for LLM agents
     Info,
+}
+
+#[derive(Subcommand)]
+enum CoordCommands {
+    /// Claim the next available task
+    Claim {
+        /// Filter by capability
+        #[arg(long)]
+        capability: Option<String>,
+        /// Filter by skill level (<=entry, <=intermediate, expert)
+        #[arg(long)]
+        skill_level: Option<String>,
+        /// Claim any task regardless of priority
+        #[arg(long)]
+        any: bool,
+    },
+    
+    /// Release a claimed task
+    Release {
+        /// Task ID to release
+        task_id: String,
+    },
+    
+    /// Approve a task in review status
+    Approve {
+        /// Task ID to approve
+        task_id: String,
+    },
+    
+    /// Append message to coordination log
+    Msg {
+        /// Message to log
+        message: String,
+    },
+    
+    /// Update agent heartbeat
+    Beat,
+    
+    /// Clean stale locks and rotate logs
+    CleanStale {
+        /// Timeout in seconds (default: 900)
+        #[arg(long, default_value = "900")]
+        timeout: u64,
+    },
+    
+    /// Update quota tracker
+    Quota {
+        /// Add tokens to quota
+        #[arg(long)]
+        add: Option<u64>,
+    },
+    
+    /// List current work registry
+    Ls,
 }
 
 fn main() -> Result<()> {
@@ -276,6 +337,10 @@ fn main() -> Result<()> {
             } else {
                 human::validate(all, schema.as_deref(), strict, cli.verbose)
             }
+        }
+        
+        Commands::Coord { subcommand } => {
+            coord::handle_command(subcommand, is_agent_mode, cli.verbose)
         }
     }
 }

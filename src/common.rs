@@ -8,6 +8,8 @@ pub const SESSION_STATE_FILE: &str = "session_state.json";
 pub const COVERAGE_HISTORY_FILE: &str = "coverage_history.json";
 pub const AUDIT_LOG_FILE: &str = "audit.log";
 pub const TEST_SUMMARIES_DIR: &str = "test_summaries";
+pub const COORDINATION_DIR: &str = "coordination";
+pub const ACTIVE_WORK_REGISTRY_FILE: &str = "active_work_registry.json";
 
 pub fn rotd_path() -> PathBuf {
     Path::new(ROTD_DIR).to_path_buf()
@@ -35,6 +37,10 @@ pub fn coverage_history_path() -> PathBuf {
 
 pub fn audit_log_path() -> PathBuf {
     rotd_path().join(AUDIT_LOG_FILE)
+}
+
+pub fn active_work_registry_path() -> PathBuf {
+    rotd_path().join(COORDINATION_DIR).join(ACTIVE_WORK_REGISTRY_FILE)
 }
 
 pub fn test_summaries_path() -> PathBuf {

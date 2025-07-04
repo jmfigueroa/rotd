@@ -33,6 +33,30 @@ pub enum TaskStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum RegistryStatus {
+    Unclaimed,
+    Claimed,
+    Done,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RegistryEntry {
+    pub id: String,
+    pub title: String,
+    pub status: RegistryStatus,
+    pub priority: Priority,
+    pub claimed_by: Option<String>,
+    pub claimed_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ActiveWorkRegistry {
+    pub tasks: Vec<RegistryEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
     Urgent,
