@@ -1,0 +1,28 @@
+# ROTD Tasks Update
+
+Updated tasks.jsonl with completed work for GitHub Actions enhancements and macOS installer creation.
+
+## Tasks Added
+
+- **2.1-github-actions**: Enhanced GitHub Actions release workflow
+  - Added comprehensive platform support (Linux x86_64/ARM64, macOS x86_64/ARM64, Windows x86_64)
+  - Enhanced release descriptions with ROTD overview and multi-agent coordination details
+  - Proper archive creation (tar.gz for Unix, zip for Windows)
+
+- **2.1-macos-installer**: Add macOS installer to automated releases
+  - Created professional .pkg installer with universal binary support
+  - GUI installation with welcome and completion screens
+  - Automatic PATH configuration and update handling
+  - Proper install/uninstall scripts
+
+## Impact
+
+The tasks.jsonl file now accurately reflects all completed work in this session, providing proper ROTD compliance and task tracking history.
+
+## ROTD Task Reference
+
+Task-ID: docs-update-tasks
+
+## Test Coverage
+
+ROTD compliance verified with updated tasks tracking.
