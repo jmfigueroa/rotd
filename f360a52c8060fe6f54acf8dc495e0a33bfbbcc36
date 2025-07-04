@@ -1,0 +1,49 @@
+# Update Command Error Handling Improvements
+
+## Problem Solved
+
+The update command previously showed a generic error message:
+
+This provided no useful information for troubleshooting network, API, or connectivity issues.
+
+## Changes Made
+
+### Enhanced Error Messages
+- **Network errors**: Specific timeout and connection error messages
+- **HTTP errors**: Show actual status codes (404, 403, 500, etc.) with context
+- **Parsing errors**: Clear messages about malformed API responses
+- **Version parsing**: Better error messages for invalid release tags
+
+### Verbose Troubleshooting
+- Added  flag support for troubleshooting guidance
+- Common solutions for network issues, rate limiting, corporate firewalls
+- Specific URL to test manually
+- Proxy configuration suggestions
+
+### Improved Agent Mode
+- JSON error responses include specific error details
+- Better error categorization (fetch-error, no-releases, etc.)
+
+## Examples
+
+**Before:**
+
+**After (without verbose):**
+
+**After (with --verbose):**
+
+## ROTD Task Reference
+
+Task-ID: 1.3.0-update-error-handling
+
+## Testing
+
+Manual testing covered:
+- Network timeout scenarios
+- 404 errors for non-existent repositories
+- Successful API calls with no releases
+- Verbose vs non-verbose output formatting
+
+## Impact
+
+Users can now effectively troubleshoot update command failures instead of being stuck with generic error messages.
