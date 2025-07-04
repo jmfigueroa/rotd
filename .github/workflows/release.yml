@@ -51,7 +51,17 @@ jobs:
           
           ## Installation
           
-          Download the appropriate binary for your platform and make it executable:
+          ### macOS (Recommended)
+          
+          **🍎 macOS Installer**: Download `rotd-macos-installer.pkg` for a guided installation that:
+          - Creates a universal binary (works on Intel and Apple Silicon)
+          - Automatically adds to your PATH
+          - Updates existing installations
+          - Provides a professional installer experience
+          
+          ### Manual Installation
+          
+          Download the appropriate binary for your platform:
           
           ```bash
           # Linux/macOS
@@ -144,4 +154,223 @@ jobs:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: ./${{ matrix.asset_name }}
         asset_name: ${{ matrix.asset_name }}
+        asset_content_type: application/octet-stream
+
+  build-macos-installer:
+    name: Build macOS Installer
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Build universal binary
+      run: |
+        # Build for both architectures
+        rustup target add x86_64-apple-darwin aarch64-apple-darwin
+        cargo build --release --target x86_64-apple-darwin
+        cargo build --release --target aarch64-apple-darwin
+        
+        # Create universal binary
+        mkdir -p target/universal/release
+        lipo -create \
+          target/x86_64-apple-darwin/release/rotd \
+          target/aarch64-apple-darwin/release/rotd \
+          -output target/universal/release/rotd
+
+    - name: Create installer structure
+      run: |
+        # Create installer directory structure
+        mkdir -p installer/pkg/usr/local/bin
+        mkdir -p installer/scripts
+        mkdir -p installer/resources
+        
+        # Copy the universal binary
+        cp target/universal/release/rotd installer/pkg/usr/local/bin/
+        chmod +x installer/pkg/usr/local/bin/rotd
+        
+        # Create postinstall script to add to PATH and update existing installation
+        cat > installer/scripts/postinstall << 'EOF'
+        #!/bin/bash
+        
+        # Make sure /usr/local/bin is in PATH
+        if ! echo "$PATH" | grep -q "/usr/local/bin"; then
+            echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.zshrc
+            echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bash_profile
+        fi
+        
+        # Set proper permissions
+        chmod +x /usr/local/bin/rotd
+        
+        # Create symlink if user has a different installation
+        if [ -f "/usr/bin/rotd" ]; then
+            ln -sf /usr/local/bin/rotd /usr/bin/rotd
+        fi
+        
+        echo "ROTD CLI has been installed successfully!"
+        echo "Run 'rotd --version' to verify the installation."
+        echo "You may need to restart your terminal or run 'source ~/.zshrc' to update your PATH."
+        
+        exit 0
+        EOF
+        
+        chmod +x installer/scripts/postinstall
+        
+        # Create preinstall script to backup existing installation
+        cat > installer/scripts/preinstall << 'EOF'
+        #!/bin/bash
+        
+        # Backup existing rotd installation if it exists
+        if [ -f "/usr/local/bin/rotd" ]; then
+            cp /usr/local/bin/rotd /tmp/rotd.backup
+            echo "Backed up existing ROTD installation"
+        fi
+        
+        exit 0
+        EOF
+        
+        chmod +x installer/scripts/preinstall
+
+    - name: Create installer metadata
+      run: |
+        # Create Distribution file
+        cat > installer/Distribution << EOF
+        <?xml version="1.0" encoding="utf-8"?>
+        <installer-gui-script minSpecVersion="1">
+            <title>ROTD CLI ${{ needs.create-release.outputs.tag_name }}</title>
+            <background file="background.png" mime-type="image/png" />
+            <welcome file="welcome.html" mime-type="text/html" />
+            <conclusion file="conclusion.html" mime-type="text/html" />
+            <options customize="never" require-scripts="false" rootVolumeOnly="true" />
+            <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true" />
+            <installation-check script="installationCheck()"/>
+            <script>
+            function installationCheck() {
+                if(!(system.compareVersions(system.version.ProductVersion, '10.14') >= 0)) {
+                    my.result.title = 'Unsupported macOS Version';
+                    my.result.message = 'ROTD requires macOS 10.14 (Mojave) or later.';
+                    my.result.type = 'Fatal';
+                    return false;
+                }
+                return true;
+            }
+            </script>
+            <choices-outline>
+                <line choice="default">
+                    <line choice="rotd"/>
+                </line>
+            </choices-outline>
+            <choice id="default"/>
+            <choice id="rotd" visible="false">
+                <pkg-ref id="com.rotd.cli"/>
+            </choice>
+            <pkg-ref id="com.rotd.cli" version="0" onConclusion="none">rotd.pkg</pkg-ref>
+        </installer-gui-script>
+        EOF
+        
+        # Create welcome message
+        cat > installer/resources/welcome.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
+                h1 { color: #007AFF; }
+                .feature { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>Welcome to ROTD CLI</h1>
+            <p><strong>Runtime-Oriented Test Discipline</strong> - A development methodology and CLI tool that enforces systematic test-driven development through continuous task tracking, test summaries, and project health monitoring.</p>
+            
+            <div class="feature">
+                <h3>🤖 Multi-Agent Coordination</h3>
+                <p>Coordinate multiple AI agents or developers working on the same codebase with task claiming, capability routing, and real-time work registries.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>🔄 Automatic Updates</h3>
+                <p>Use <code>rotd upgrade</code> to automatically download and install CLI updates, or <code>rotd update</code> for project methodology updates.</p>
+            </div>
+            
+            <div class="feature">
+                <h3>📊 Project Health Monitoring</h3>
+                <p>Continuous task tracking, test summaries, and compliance checking to maintain project quality.</p>
+            </div>
+            
+            <p>This installer will place the <code>rotd</code> command in <code>/usr/local/bin</code> and ensure it's available in your PATH.</p>
+        </body>
+        </html>
+        EOF
+        
+        # Create conclusion message
+        cat > installer/resources/conclusion.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
+                h1 { color: #28a745; }
+                code { background: #f5f5f5; padding: 2px 4px; border-radius: 3px; }
+                .command { background: #000; color: #fff; padding: 10px; border-radius: 5px; font-family: monospace; }
+            </style>
+        </head>
+        <body>
+            <h1>✅ ROTD CLI Installed Successfully!</h1>
+            
+            <h3>Getting Started</h3>
+            <p>Open Terminal and try these commands:</p>
+            
+            <div class="command">
+                # Verify installation<br>
+                rotd --version<br><br>
+                
+                # Initialize ROTD in your project<br>
+                rotd init<br><br>
+                
+                # Check project health<br>
+                rotd check<br><br>
+                
+                # For multi-agent coordination<br>
+                export ROTD_AGENT_ID=agent-backend<br>
+                rotd coord beat
+            </div>
+            
+            <p><strong>Note:</strong> You may need to restart your terminal or run <code>source ~/.zshrc</code> to update your PATH.</p>
+            
+            <p>📖 Full documentation: <a href="https://github.com/jmfigueroa/rotd">https://github.com/jmfigueroa/rotd</a></p>
+        </body>
+        </html>
+        EOF
+
+    - name: Build package
+      run: |
+        # Create the component package
+        pkgbuild \
+          --root installer/pkg \
+          --scripts installer/scripts \
+          --identifier com.rotd.cli \
+          --version ${{ needs.create-release.outputs.tag_name }} \
+          --install-location / \
+          installer/rotd.pkg
+        
+        # Create the product archive (installer)
+        productbuild \
+          --distribution installer/Distribution \
+          --resources installer/resources \
+          --package-path installer \
+          rotd-macos-installer.pkg
+
+    - name: Upload macOS Installer
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./rotd-macos-installer.pkg
+        asset_name: rotd-macos-installer.pkg
         asset_content_type: application/octet-stream
