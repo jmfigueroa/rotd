@@ -1,0 +1,41 @@
+# macOS Installer for GitHub Releases
+
+Adds professional macOS installer (.pkg) to automated releases with universal binary support and proper PATH management.
+
+## Features Added
+
+- **Universal Binary** - Single installer works on both Intel and Apple Silicon Macs
+- **Professional GUI** - Welcome screen, installation progress, and completion message
+- **Automatic PATH Setup** - Adds /usr/local/bin to .zshrc and .bash_profile if needed
+- **Update Handling** - Backs up existing installation and creates symlinks if needed
+- **Version Validation** - Requires macOS 10.14 (Mojave) or later
+- **Beautiful Interface** - Styled HTML welcome and conclusion screens
+
+## Technical Implementation
+
+- Uses `lipo` to create universal binary from x86_64 and ARM64 builds
+- `pkgbuild` creates component package with scripts
+- `productbuild` creates final installer with distribution and resources
+- Pre/post install scripts handle backup and PATH configuration
+- Installs to `/usr/local/bin` with proper permissions
+
+## User Experience
+
+1. Download `rotd-macos-installer.pkg` from GitHub releases
+2. Double-click to run guided installer
+3. Welcome screen explains ROTD features
+4. Automatic installation with progress indicator
+5. Completion screen with getting started commands
+6. Terminal ready with `rotd` command available
+
+## Impact
+
+macOS users now get a professional installation experience that properly handles PATH configuration and updates, eliminating common CLI installation issues.
+
+## ROTD Task Reference
+
+Task-ID: 2.1-macos-installer
+
+## Test Coverage
+
+Will be tested with v1.3.2 tag push and installer download.
