@@ -418,7 +418,7 @@ pub fn check(fix: bool) -> Result<()> {
 pub fn info() -> Result<()> {
     let info = serde_json::json!({
         "rotd_cli": {
-            "version": "1.3.0",
+            "version": "1.3.1",
             "agent_commands": {
                 "update_task": {
                     "usage": "rotd agent update-task [--file FILE] [--strict] [--pss] [--timestamp]",
@@ -445,6 +445,59 @@ pub fn info() -> Result<()> {
                     "purpose": "Show this command reference"
                 }
             },
+            "coordination_commands": {
+                "claim": {
+                    "usage": "rotd coord claim [--capability CAP] [--skill-level LEVEL] [--any]",
+                    "purpose": "Claim next available task by priority/capability",
+                    "capabilities": ["frontend_ts", "backend_rust", "tests_only", "docs", "refactor"],
+                    "skill_levels": ["entry", "intermediate", "expert"]
+                },
+                "release": {
+                    "usage": "rotd coord release <task_id>",
+                    "purpose": "Release claimed task and mark done"
+                },
+                "beat": {
+                    "usage": "rotd coord beat",
+                    "purpose": "Update agent heartbeat (required every 60s)"
+                },
+                "msg": {
+                    "usage": "rotd coord msg \"message\"",
+                    "purpose": "Log message to coordination.log"
+                },
+                "ls": {
+                    "usage": "rotd coord ls [--verbose]",
+                    "purpose": "List current work registry"
+                },
+                "quota": {
+                    "usage": "rotd coord quota [--add TOKENS]",
+                    "purpose": "View/update quota usage"
+                },
+                "clean-stale": {
+                    "usage": "rotd coord clean-stale [--timeout SECS]",
+                    "purpose": "Clean stale locks (default 15min timeout)"
+                }
+            },
+            "multi_agent_setup": {
+                "environment": {
+                    "ROTD_AGENT_ID": "Required: unique agent identifier",
+                    "ROTD_CAPABILITY": "Optional: primary capability filter",
+                    "ROTD_SKILL_LEVEL": "Optional: skill level filter"
+                },
+                "workflow": [
+                    "export ROTD_AGENT_ID=agent-backend",
+                    "rotd coord beat",
+                    "rotd coord claim --capability backend_rust",
+                    "# work on task",
+                    "rotd coord release <task_id>"
+                ],
+                "coordination_files": {
+                    ".rotd/coordination/active_work_registry.json": "Task claim status",
+                    ".rotd/coordination/coordination.log": "Agent communication",
+                    ".rotd/coordination/quota.json": "Token usage tracking",
+                    ".rotd/coordination/heartbeat/*.beat": "Agent liveness",
+                    ".rotd/coordination/agent_locks/*": "Agent file locks"
+                }
+            },
             "global_flags": {
                 "--agent": "Enable agent mode (minimal output, strict validation)",
                 "--dry-run": "Show actions without executing",
@@ -453,7 +506,9 @@ pub fn info() -> Result<()> {
             "common_patterns": {
                 "task_update": "echo '{\"id\":\"6.2\",\"status\":\"complete\"}' | rotd agent update-task --timestamp --pss",
                 "test_complete": "rotd agent append-summary --file test_summaries/6.2.json",
-                "log_failure": "echo '{\"id\":\"fix-001\",\"diagnosis\":\"...\",\"remediation\":\"...\"}' | rotd agent log-lesson"
+                "log_failure": "echo '{\"id\":\"fix-001\",\"diagnosis\":\"...\",\"remediation\":\"...\"}' | rotd agent log-lesson",
+                "multi_agent_start": "export ROTD_AGENT_ID=agent-1 && rotd coord beat && rotd coord claim",
+                "multi_agent_finish": "rotd coord release <task_id> && rotd coord msg \"Task completed\""
             },
             "output_format": "JSON only in agent mode, human-readable tables in normal mode",
             "validation": "Strict schema enforcement with --strict flag, basic validation by default"
@@ -591,7 +646,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.3.0".to_string()
+            "1.3.1".to_string()
         };
         
         let result = serde_json::json!({
@@ -622,7 +677,7 @@ pub fn version(project: bool, latest: bool) -> Result<()> {
             let v: ProjectVersion = read_json(&version_path)?;
             v.version
         } else {
-            "1.3.0".to_string()
+            "1.3.1".to_string()
         };
         
         // Get latest version from GitHub
