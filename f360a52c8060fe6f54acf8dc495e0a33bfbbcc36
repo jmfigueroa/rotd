@@ -3,6 +3,9 @@
 ## Problem Solved
 
 The update command previously showed a generic error message:
+```
+! Could not fetch latest version.
+```
 
 This provided no useful information for troubleshooting network, API, or connectivity issues.
 
@@ -15,7 +18,7 @@ This provided no useful information for troubleshooting network, API, or connect
 - **Version parsing**: Better error messages for invalid release tags
 
 ### Verbose Troubleshooting
-- Added  flag support for troubleshooting guidance
+- Added `--verbose` flag support for troubleshooting guidance
 - Common solutions for network issues, rate limiting, corporate firewalls
 - Specific URL to test manually
 - Proxy configuration suggestions
@@ -27,10 +30,27 @@ This provided no useful information for troubleshooting network, API, or connect
 ## Examples
 
 **Before:**
+```
+! Could not fetch latest version.
+```
 
 **After (without verbose):**
+```
+! Could not fetch latest version.
+Reason: GitHub API returned error 404: Not Found. This might be due to rate limiting or service issues.
+```
 
 **After (with --verbose):**
+```
+! Could not fetch latest version.
+Reason: Request timed out after 10 seconds. Check your internet connection.
+
+Common solutions:
+- Check your internet connection
+- Try again in a few minutes (GitHub API may be rate limited)
+- Check if you can access https://api.github.com/repos/jmfigueroa/rotd/releases
+- If behind a corporate firewall, you may need to configure proxy settings
+```
 
 ## ROTD Task Reference
 
