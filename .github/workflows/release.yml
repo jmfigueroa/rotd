@@ -14,15 +14,70 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
     steps:
+    - name: Get tag name
+      id: get_tag
+      run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ steps.get_tag.outputs.tag_name }}
+        release_name: "ROTD ${{ steps.get_tag.outputs.tag_name }}: Enhanced Agent Info with Multi-Agent Coordination"
+        body: |
+          ## About ROTD
+          
+          ROTD (Runtime-Oriented Test Discipline) is a development methodology and CLI tool that enforces systematic test-driven development through continuous task tracking, test summaries, and project health monitoring.
+          
+          ## Multi-Agent Coordination
+          
+          This release enhances ROTD's multi-agent coordination system, allowing multiple AI agents or developers to collaborate on the same codebase through:
+          
+          - **Task claiming and coordination** - Agents can claim tasks based on their capabilities (frontend, backend, testing, etc.)
+          - **Real-time work registry** - Shared state tracking which agents are working on what tasks
+          - **Capability-based routing** - Tasks are automatically assigned based on agent skills and expertise
+          - **Coordination messaging** - Built-in communication system for agent coordination
+          
+          ## Key Changes in This Release
+          
+          - **Separated `update` and `upgrade` commands** - `rotd update` handles project methodology updates, `rotd upgrade` automatically downloads and installs CLI binary updates
+          - **Enhanced agent info** - `rotd agent info` now includes comprehensive multi-agent coordination reference
+          - **Automatic binary installation** - No more manual downloads required for CLI upgrades
+          - **Platform detection** - Automatically detects and downloads correct binary for Linux, macOS, and Windows
+          
+          ## Installation
+          
+          Download the appropriate binary for your platform and make it executable:
+          
+          ```bash
+          # Linux/macOS
+          chmod +x rotd
+          sudo mv rotd /usr/local/bin/
+          
+          # Or upgrade existing installation
+          rotd upgrade
+          ```
+          
+          ## Getting Started
+          
+          ```bash
+          # Initialize ROTD in your project
+          rotd init
+          
+          # Check project health
+          rotd check
+          
+          # For multi-agent coordination
+          export ROTD_AGENT_ID=agent-backend
+          rotd coord beat
+          rotd coord claim --capability backend_rust
+          ```
+          
+          Full documentation: https://github.com/jmfigueroa/rotd
         draft: false
         prerelease: false
 
@@ -31,23 +86,22 @@ jobs:
     needs: create-release
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - x86_64-pc-windows-msvc
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: rotd
-            asset_name: rotd-linux-amd64
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            artifact_name: rotd
-            asset_name: rotd-macos-amd64
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            artifact_name: rotd.exe
-            asset_name: rotd-windows-amd64.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset_name: rotd-linux-x86_64.tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            asset_name: rotd-linux-aarch64.tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset_name: rotd-macos-x86_64.tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset_name: rotd-macos-aarch64.tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_name: rotd-windows-x86_64.zip
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -57,9 +111,30 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         targets: ${{ matrix.target }}
+
+    - name: Install cross-compilation tools (Linux ARM64)
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
     
     - name: Build release binary
       run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Create archive (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cd target/${{ matrix.target }}/release
+        tar czf ../../../${{ matrix.asset_name }} rotd
+        cd ../../..
+
+    - name: Create archive (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd target/${{ matrix.target }}/release
+        7z a ../../../${{ matrix.asset_name }} rotd.exe
+        cd ../../..
     
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
@@ -67,6 +142,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        asset_path: ./${{ matrix.asset_name }}
         asset_name: ${{ matrix.asset_name }}
         asset_content_type: application/octet-stream
