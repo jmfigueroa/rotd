@@ -586,115 +586,149 @@ pub fn info() -> Result<()> {
 pub fn update(check_only: bool, _skip_confirmation: bool) -> Result<()> {
     check_rotd_initialized()?;
 
-    // Get current version
-    let current_version = env!("CARGO_PKG_VERSION");
+    // Get current project version
+    let version_path = crate::common::rotd_path().join("version.json");
+    let current_version = if version_path.exists() {
+        let v: ProjectVersion = read_json(&version_path)?;
+        v.version
+    } else {
+        "1.3.3".to_string()
+    };
 
-    // Check for updates
-    let (update_available, latest_release) = match github::check_update() {
-        Ok((available, release)) => (available, release),
-        Err(e) => {
-            let result = serde_json::json!({
-                "action": "check_updates",
-                "error": format!("Failed to fetch latest version: {}", e),
-                "current_version": current_version,
-                "latest_version": "unknown",
-                "update_available": false
-            });
-            println!("{}", serde_json::to_string(&result)?);
-            return Ok(());
+    // The latest methodology version available
+    let latest_methodology_version = "1.3.4";
+    
+    // Compare semantic versions
+    let needs_update = match (current_version.as_str(), latest_methodology_version) {
+        (current, latest) if current == latest => false,
+        (current, latest) => {
+            // Simple version comparison
+            let current_parts: Vec<u32> = current.trim_start_matches('v')
+                .split('.')
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            let latest_parts: Vec<u32> = latest.trim_start_matches('v')
+                .split('.')
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            
+            if current_parts.len() != 3 || latest_parts.len() != 3 {
+                true // Assume update needed if version format is unexpected
+            } else {
+                current_parts < latest_parts
+            }
         }
     };
 
     if check_only {
-        if let Some(latest) = latest_release {
-            // Extract changes from release description
-            let changes = github::extract_changes(&latest.description);
-
-            let result = serde_json::json!({
-                "action": "check_updates",
-                "current_version": current_version,
-                "latest_version": latest.version,
-                "update_available": update_available,
-                "published_at": latest.published_at,
-                "changes": changes,
-                "download_url": latest.download_url,
-                "html_url": latest.html_url
-            });
-            println!("{}", serde_json::to_string(&result)?);
-        } else {
-            let result = serde_json::json!({
-                "action": "check_updates",
-                "current_version": current_version,
-                "update_available": false,
-                "message": "No releases found"
-            });
-            println!("{}", serde_json::to_string(&result)?);
-        }
-        return Ok(());
-    }
-
-    // Check if update is available
-    if !update_available {
         let result = serde_json::json!({
-            "status": "success",
-            "action": "update",
-            "message": "No updates available",
-            "current_version": current_version
+            "action": "check_updates",
+            "current_version": current_version,
+            "latest_version": latest_methodology_version,
+            "update_available": needs_update,
+            "update_type": "methodology"
         });
         println!("{}", serde_json::to_string(&result)?);
         return Ok(());
     }
 
-    // Get latest release
-    let latest =
-        latest_release.ok_or_else(|| anyhow::anyhow!("No release information available"))?;
+    // Check if update is available
+    if !needs_update {
+        let result = serde_json::json!({
+            "status": "success",
+            "action": "update",
+            "message": "No updates available",
+            "current_version": current_version,
+            "latest_version": latest_methodology_version
+        });
+        println!("{}", serde_json::to_string(&result)?);
+        return Ok(());
+    }
 
-    // Create backup directory
+    // Perform the update
     let rotd_dir = crate::common::rotd_path();
-    let backup_dir = rotd_dir.join("backup");
-    if backup_dir.exists() {
-        std::fs::remove_dir_all(&backup_dir)?;
-    }
-    std::fs::create_dir_all(&backup_dir)?;
-
-    // Backup existing files
-    for file in ["tasks.jsonl", "session_state.json", "coverage_history.json"] {
-        let src = rotd_dir.join(file);
-        if src.exists() {
-            std::fs::copy(&src, backup_dir.join(file))?;
-        }
-    }
-
-    // Generate manifest
+    
+    // Update version.json
+    let new_version = ProjectVersion {
+        version: latest_methodology_version.to_string(),
+        updated_at: Some(chrono::Utc::now()),
+        manifest_hash: None,
+    };
+    write_json(&version_path, &new_version)?;
+    
+    // Add primer strategy if missing
+    let primer_path = rotd_dir.join("primer.jsonc");
+    let primer_created = if !primer_path.exists() {
+        // Get project name from current directory
+        let current_dir = std::env::current_dir()?;
+        let project_name = current_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Project")
+            .to_string();
+        
+        // Create basic primer structure
+        let primer = ProjectPrimer {
+            name: project_name.clone(),
+            scope: "root".to_string(),
+            description: "TODO: Add project description".to_string(),
+            status: "active".to_string(),
+            language: "TODO: Specify primary language".to_string(),
+            entry_points: vec!["TODO: Add entry points".to_string()],
+            test_dirs: vec!["tests/".to_string(), "test/".to_string()],
+            dependencies: vec!["TODO: List key dependencies".to_string()],
+            known_issues: vec!["TODO: Document any known issues".to_string()],
+            key_concepts: vec!["TODO: Add key concepts".to_string()],
+            preferred_agents: Some(vec!["Claude Sonnet".to_string(), "Claude Opus".to_string()]),
+            suggested_starting_points: vec![
+                "TODO: Add suggested starting points for new developers or agents".to_string()
+            ],
+            major_components: None,
+            update_triggers: Some(vec![
+                "Major architectural changes".to_string(),
+                "New features or significant functionality changes".to_string(),
+                "Documentation updates".to_string()
+            ]),
+        };
+        
+        // Write primer file with nice formatting
+        let primer_json = serde_json::to_string_pretty(&primer)?;
+        std::fs::write(&primer_path, primer_json)?;
+        true
+    } else {
+        false
+    };
+    
+    // Generate update manifest for tracking
     let manifest = UpdateManifest {
-        version: latest.version.clone(),
-        date: latest.published_at.clone(),
-        previous_version: current_version.to_string(),
+        version: latest_methodology_version.to_string(),
+        date: chrono::Utc::now().to_rfc3339(),
+        previous_version: current_version.clone(),
         changes: vec![ChangeEntry {
-            change_type: "feature".to_string(),
-            component: "rotd".to_string(),
-            description: latest.name.clone(),
+            change_type: "methodology_update".to_string(),
+            component: "rotd_project".to_string(),
+            description: format!("Updated ROTD methodology from {} to {}", current_version, latest_methodology_version),
             breaking: false,
             migration_required: false,
         }],
     };
-
-    // Write manifest
+    
     let manifest_path = rotd_dir.join("update_manifest.json");
     write_json(&manifest_path, &manifest)?;
 
-    // Extract changes
-    let changes = github::extract_changes(&latest.description);
-
+    let mut files_updated = vec!["version.json", "update_manifest.json"];
+    if primer_created {
+        files_updated.push("primer.jsonc");
+    }
+    
     let result = serde_json::json!({
         "status": "success",
         "action": "update",
         "current_version": current_version,
-        "new_version": latest.version,
-        "changes": changes,
-        "download_url": latest.download_url,
-        "html_url": latest.html_url,
-        "manifest_file": ".rotd/update_manifest.json"
+        "new_version": latest_methodology_version,
+        "update_type": "methodology",
+        "files_updated": files_updated,
+        "primer_created": primer_created
     });
 
     println!("{}", serde_json::to_string(&result)?);

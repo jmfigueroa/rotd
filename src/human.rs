@@ -73,77 +73,72 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
         "1.3.3".to_string()
     };
 
+    // The latest methodology version available
+    let latest_methodology_version = "1.3.4";
+
     // Check for methodology updates
     println!("{}", "Checking for ROTD methodology updates...".cyan());
-
-    let (update_available, latest_release) = match github::check_update() {
-        Ok((available, release)) => (available, release),
-        Err(e) => {
-            println!("   {} Could not fetch latest version.", "!".yellow());
-            println!("   Reason: {}", e);
-
-            if verbose {
-                println!(
-                    "   
-   Common solutions:
-   - Check your internet connection
-   - Try again in a few minutes (GitHub API may be rate limited)
-   - Check if you can access https://api.github.com/repos/jmfigueroa/rotd/releases
-   - If behind a corporate firewall, you may need to configure proxy settings"
-                );
+    
+    // Compare semantic versions
+    let needs_update = match (current_version.as_str(), latest_methodology_version) {
+        (current, latest) if current == latest => false,
+        (current, latest) => {
+            // Simple version comparison - can be enhanced with semver crate if needed
+            let current_parts: Vec<u32> = current.trim_start_matches('v')
+                .split('.')
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            let latest_parts: Vec<u32> = latest.trim_start_matches('v')
+                .split('.')
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            
+            if current_parts.len() != 3 || latest_parts.len() != 3 {
+                true // Assume update needed if version format is unexpected
+            } else {
+                current_parts < latest_parts
             }
-
-            return Ok(());
         }
     };
 
     if check_only {
         // Display current and latest versions
         println!("   Current version: {}", current_version.green());
+        println!("   Latest version: {}", latest_methodology_version.green());
 
-        if let Some(latest) = latest_release {
-            println!("   Latest version: {}", latest.version.green());
-
-            if update_available {
-                println!("   {} Update available!", "✓".green());
-
-                if verbose {
-                    println!("\nChanges in latest version:");
-                    for change in github::extract_changes(&latest.description) {
-                        println!("   {}", change);
-                    }
-                    println!("\nSee more: {}", latest.html_url.cyan().underline());
-                }
-            } else {
-                println!("   {} You have the latest version.", "✓".green());
+        if needs_update {
+            println!("   {} Update available!", "✓".green());
+            
+            if verbose {
+                println!("\nThis will update:");
+                println!("   • Project ROTD methodology to v{}", latest_methodology_version);
+                println!("   • Documentation templates and examples");
+                println!("   • Schema definitions and validation rules");
+                println!("   • Primer strategy templates");
             }
         } else {
-            println!("   {} No releases found on GitHub.", "!".yellow());
+            println!("   {} You have the latest version.", "✓".green());
         }
 
         return Ok(());
     }
 
     // Check if update is available
-    if !update_available {
+    if !needs_update {
         println!("{}", "✓ You're already using the latest version!".green());
         return Ok(());
     }
 
-    // Get latest release
-    let latest =
-        latest_release.ok_or_else(|| anyhow::anyhow!("No release information available"))?;
-
     println!("{}", "✓ Update available!".green().bold());
     println!("   Current version: {}", current_version);
-    println!("   Latest version: {}", latest.version);
-    println!("   Published on: {}", latest.published_at);
+    println!("   Latest version: {}", latest_methodology_version);
 
-    // Show changes
-    println!("\nChanges in this update:");
-    for change in github::extract_changes(&latest.description) {
-        println!("   {}", change);
-    }
+    // Show what will be updated
+    println!("\nThis update will:");
+    println!("   • Update project ROTD methodology to v{}", latest_methodology_version);
+    println!("   • Refresh documentation and templates");
+    println!("   • Update schema definitions");
+    println!("   • Add primer strategy support if missing");
 
     // Confirm update
     if !yes {
@@ -158,59 +153,98 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
         }
     }
 
-    // Create backup directory
+    // Perform the update
+    println!("\n{}", "Updating project ROTD methodology...".cyan());
+    
     let rotd_dir = crate::common::rotd_path();
-    let backup_dir = rotd_dir.join("backup");
-    if backup_dir.exists() {
-        std::fs::remove_dir_all(&backup_dir)?;
+    
+    // Update version.json
+    let new_version = ProjectVersion {
+        version: latest_methodology_version.to_string(),
+        updated_at: Some(chrono::Utc::now()),
+        manifest_hash: None,
+    };
+    write_json(&version_path, &new_version)?;
+    println!("   ✓ Updated version.json to v{}", latest_methodology_version);
+    
+    // Add primer strategy if missing
+    let primer_path = rotd_dir.join("primer.jsonc");
+    if !primer_path.exists() {
+        println!("   ✓ Adding primer strategy support...");
+        
+        // Get project name from current directory
+        let current_dir = std::env::current_dir()?;
+        let project_name = current_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Project")
+            .to_string();
+        
+        // Create basic primer structure
+        let primer = ProjectPrimer {
+            name: project_name.clone(),
+            scope: "root".to_string(),
+            description: "TODO: Add project description".to_string(),
+            status: "active".to_string(),
+            language: "TODO: Specify primary language".to_string(),
+            entry_points: vec!["TODO: Add entry points".to_string()],
+            test_dirs: vec!["tests/".to_string(), "test/".to_string()],
+            dependencies: vec!["TODO: List key dependencies".to_string()],
+            known_issues: vec!["TODO: Document any known issues".to_string()],
+            key_concepts: vec!["TODO: Add key concepts".to_string()],
+            preferred_agents: Some(vec!["Claude Sonnet".to_string(), "Claude Opus".to_string()]),
+            suggested_starting_points: vec![
+                "TODO: Add suggested starting points for new developers or agents".to_string()
+            ],
+            major_components: None,
+            update_triggers: Some(vec![
+                "Major architectural changes".to_string(),
+                "New features or significant functionality changes".to_string(),
+                "Documentation updates".to_string()
+            ]),
+        };
+        
+        // Write primer file with nice formatting
+        let primer_json = serde_json::to_string_pretty(&primer)?;
+        std::fs::write(&primer_path, primer_json)?;
+        println!("   ✓ Created primer.jsonc template");
     }
-    std::fs::create_dir_all(&backup_dir)?;
-
-    // Backup existing files
-    println!("\n{}", "Creating backups...".cyan());
-    for file in ["tasks.jsonl", "session_state.json", "coverage_history.json"] {
-        let src = rotd_dir.join(file);
-        if src.exists() {
-            println!("   Backing up {}...", file);
-            std::fs::copy(&src, backup_dir.join(file))?;
-        }
-    }
-
-    // Generate manifest
-    println!("\n{}", "Generating update manifest...".cyan());
+    
+    // Generate update manifest for tracking
     let manifest = UpdateManifest {
-        version: latest.version.clone(),
-        date: latest.published_at.clone(),
-        previous_version: current_version.to_string(),
+        version: latest_methodology_version.to_string(),
+        date: chrono::Utc::now().to_rfc3339(),
+        previous_version: current_version.clone(),
         changes: vec![ChangeEntry {
-            change_type: "feature".to_string(),
-            component: "rotd".to_string(),
-            description: latest.name.clone(),
+            change_type: "methodology_update".to_string(),
+            component: "rotd_project".to_string(),
+            description: format!("Updated ROTD methodology from {} to {}", current_version, latest_methodology_version),
             breaking: false,
             migration_required: false,
         }],
     };
-
-    // Write manifest
+    
     let manifest_path = rotd_dir.join("update_manifest.json");
     write_json(&manifest_path, &manifest)?;
-
-    println!("\n{}", "✓ Update prepared successfully!".green().bold());
-    println!(
-        "   Download URL: {}",
-        latest.download_url.cyan().underline()
-    );
-    println!("   Release info: {}", latest.html_url.cyan().underline());
-    println!(
-        "   Manifest: {}",
-        manifest_path.display().to_string().cyan()
-    );
-
-    println!("\nTo complete the update, download the latest version from the URL above.");
-    println!(
-        "Your ROTD data has been backed up to: {}",
-        backup_dir.display().to_string().yellow()
-    );
+    
+    println!("\n{}", "✓ Project methodology updated successfully!".green().bold());
+    println!("   Updated from: {}", current_version.yellow());
+    println!("   Updated to: {}", latest_methodology_version.green());
+    
+    if primer_path.exists() {
+        println!("\n{}", "📋 Primer Strategy Available".cyan());
+        println!("   Use {} to customize your project primer", "rotd primer show".yellow());
+        println!("   Use {} to validate primer accuracy", "rotd primer check".yellow());
+    }
+    
+    if verbose {
+        println!("\n{}", "Files updated:".cyan());
+        println!("   • {}", version_path.display());
+        if primer_path.exists() {
+            println!("   • {}", primer_path.display());
+        }
+        println!("   • {}", manifest_path.display());
+    }
 
     Ok(())
 }

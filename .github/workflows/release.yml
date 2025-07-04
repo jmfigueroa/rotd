@@ -230,9 +230,15 @@ jobs:
         # Set proper permissions
         chmod +x /usr/local/bin/rotd
         
-        # Create symlink if user has a different installation
+        # Update existing rotd installations
         if [ -f "/usr/bin/rotd" ]; then
             ln -sf /usr/local/bin/rotd /usr/bin/rotd
+        fi
+        
+        # Update cargo bin installation if exists
+        if [ -f "$HOME/.cargo/bin/rotd" ]; then
+            cp /usr/local/bin/rotd "$HOME/.cargo/bin/rotd"
+            chmod +x "$HOME/.cargo/bin/rotd"
         fi
         
         echo "ROTD CLI has been installed successfully!"
