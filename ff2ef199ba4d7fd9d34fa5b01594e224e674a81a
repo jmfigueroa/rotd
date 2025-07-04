@@ -1,0 +1,32 @@
+# Separate Update and Upgrade Commands
+
+Resolves confusion between updating project methodology and upgrading CLI binary by implementing distinct commands with different purposes.
+
+## Changes Made
+
+- Add `upgrade` command for CLI binary updates with automatic download and installation
+- Modify `update` command to focus on ROTD project methodology updates
+- Implement platform detection and binary downloading in GitHub module
+- Add archive extraction support for tar.gz and zip files
+- Add new dependencies: flate2, tar, zip for archive handling
+- Create separate human and agent mode implementations for both commands
+- Add comprehensive error handling and progress feedback
+
+## Technical Details
+
+- `update` command: Updates project ROTD version, backs up files, creates manifests
+- `upgrade` command: Downloads platform-specific binary, extracts from archives, replaces current executable
+- Both support --check flag for preview and --yes flag for automation
+- Agent mode returns structured JSON for automation workflows
+
+## Impact
+
+Users no longer need to manually download CLI updates. The distinction between project updates and CLI upgrades is now clear and intuitive.
+
+## ROTD Task Reference
+
+Task-ID: 2.1
+
+## Test Coverage
+
+All existing tests pass. Upgrade functionality tested on current release version.
