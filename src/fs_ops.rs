@@ -25,7 +25,7 @@ where
         std::thread::sleep(Duration::from_millis(250));
     }
     let res = f();
-    file.unlock()?;
+    fs2::FileExt::unlock(&file)?;
     res
 }
 
@@ -46,7 +46,7 @@ where
         std::thread::sleep(Duration::from_millis(250));
     }
     let res = f();
-    file.unlock()?;
+    fs2::FileExt::unlock(&file)?;
     res
 }
 
@@ -202,6 +202,7 @@ pub fn safe_log_lesson(lesson: &LessonLearned, dry_run: bool) -> Result<()> {
     append_jsonl(&crate::common::lessons_path(), lesson)
 }
 
+#[allow(dead_code)]
 pub fn read_active_work_registry() -> Result<ActiveWorkRegistry> {
     let path = crate::common::active_work_registry_path();
     if !path.exists() {
@@ -210,6 +211,7 @@ pub fn read_active_work_registry() -> Result<ActiveWorkRegistry> {
     read_json(&path)
 }
 
+#[allow(dead_code)]
 pub fn write_active_work_registry(registry: &ActiveWorkRegistry) -> Result<()> {
     let path = crate::common::active_work_registry_path();
     write_json(&path, registry)
