@@ -3,7 +3,7 @@
 ## Goals
 
 - **Fast Orientation:** Let agents understand project scope, roles, structure, and priorities quickly.
-- **LLM-Consumable:** JSON or JSONC format optimized for partial loading and safe parsing.
+- **LLM-Consumable:** JSON format optimized for partial loading and safe parsing.
 - **Scoped:** Break down by repo and optionally by major directory, not a giant monolith.
 - **Auto-indexable:** Allows ROTD tooling to find and rank candidate files per task/domain.
 
@@ -12,18 +12,18 @@
 ## 1. File Structure
 
 **Project Root:**
-- `.rotd/primer.jsonc` – High-level project primer: purpose, domain, stack, major components.
+- `.rotd/primer.json` – High-level project primer: purpose, domain, stack, major components.
 
 **Subdirectories (optional):**
-- `.rotd/primer_<dir>.jsonc` (e.g., `primer_api.jsonc`, `primer_ui.jsonc`) – More focused primers for complex areas.
+- `.rotd/primer_<dir>.json` (e.g., `primer_api.json`, `primer_ui.json`) – More focused primers for complex areas.
 
 ---
 
-## 2. Format Design (`.rotd/primer*.jsonc`)
+## 2. Format Design (`.rotd/primer*.json`)
 
-Use JSONC to support inline explanation where helpful.
+Use json to support inline explanation where helpful.
 
-```jsonc
+```json
 {
   "name": "Heimdall Routing Engine",
   "scope": "core/heimdall",
@@ -65,15 +65,15 @@ Use JSONC to support inline explanation where helpful.
 ## 3. Best Practices
 
 - **Don't try to compress the whole codebase.** Instead, aim to equip agents to ask good questions.
-- Use **one `primer.jsonc` per logical domain** only when it's truly isolated.
+- Use **one `primer.json` per logical domain** only when it's truly isolated.
 - Keep primers under ~200 lines; better to split than bloat.
-- Use **inline comments (`//`)** in JSONC to assist human reviewers.
+- Use **inline comments (`//`)** in json to assist human reviewers.
 
 ---
 
 ## 4. ROTD Integration
 
-- `rotd check` can warn if no `.rotd/primer.jsonc` exists.
+- `rotd check` can warn if no `.rotd/primer.json` exists.
 - Primers can be used during task creation and buckling to rank starting files.
 - Use `rotd agent parse-primer` (TBD CLI command) to feed agent memory.
 
@@ -96,4 +96,4 @@ Use JSONC to support inline explanation where helpful.
 
 ## Summary
 
-Use `.rotd/primer*.jsonc` as machine-readable, scoped, semantic entry points for agents. Keep them small, modular, and loaded with context that helps agents reason—*not just navigate*. This isn't a replacement for READMEs, it's a precise tool for LLM task bootstrapping, with structure, not sprawl.
+Use `.rotd/primer*.json` as machine-readable, scoped, semantic entry points for agents. Keep them small, modular, and loaded with context that helps agents reason—*not just navigate*. This isn't a replacement for READMEs, it's a precise tool for LLM task bootstrapping, with structure, not sprawl.
