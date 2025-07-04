@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -13,41 +17,58 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       tag_name: ${{ steps.get_tag.outputs.tag_name }}
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Get tag name
       id: get_tag
       run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+    - name: Get release info
+      id: release_info
+      run: |
+        # Extract version number for title
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Determine release type based on version pattern
+        if [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "release_type=stable" >> $GITHUB_OUTPUT
+        else
+          echo "release_type=prerelease" >> $GITHUB_OUTPUT
+        fi
+
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.get_tag.outputs.tag_name }}
-        release_name: "ROTD ${{ steps.get_tag.outputs.tag_name }}: Enhanced Agent Info with Multi-Agent Coordination"
+        name: "ROTD ${{ steps.get_tag.outputs.tag_name }}: Primer Strategy & Multi-Agent Coordination"
         body: |
           ## About ROTD
           
           ROTD (Runtime-Oriented Test Discipline) is a development methodology and CLI tool that enforces systematic test-driven development through continuous task tracking, test summaries, and project health monitoring.
           
-          ## Multi-Agent Coordination
+          ## What's New in This Release
           
-          This release enhances ROTD's multi-agent coordination system, allowing multiple AI agents or developers to collaborate on the same codebase through:
+          ### 🎯 ROTD Primer Strategy System
+          - **Machine-readable project orientation** for LLM agents across sessions
+          - **CLI commands**: `rotd primer init`, `show`, `check`, `parse`
+          - **Structured project information** including components, dependencies, and workflows
+          - **Agent-friendly JSON output** for automated project understanding
           
-          - **Task claiming and coordination** - Agents can claim tasks based on their capabilities (frontend, backend, testing, etc.)
+          ### 🤖 Multi-Agent Coordination
+          - **Task claiming and coordination** - Agents can claim tasks based on their capabilities
           - **Real-time work registry** - Shared state tracking which agents are working on what tasks
-          - **Capability-based routing** - Tasks are automatically assigned based on agent skills and expertise
+          - **Capability-based routing** - Tasks are automatically assigned based on agent skills
           - **Coordination messaging** - Built-in communication system for agent coordination
           
-          ## Key Changes in This Release
-          
+          ### 🔧 Enhanced CLI Features
           - **Separated `update` and `upgrade` commands** - `rotd update` handles project methodology updates, `rotd upgrade` automatically downloads and installs CLI binary updates
-          - **Enhanced agent info** - `rotd agent info` now includes comprehensive multi-agent coordination reference
           - **Automatic binary installation** - No more manual downloads required for CLI upgrades
           - **Platform detection** - Automatically detects and downloads correct binary for Linux, macOS, and Windows
+          - **Backward compatibility fixes** - Resolves schema compatibility issues with existing projects
           
           ## Installation
           
@@ -78,6 +99,9 @@ jobs:
           # Initialize ROTD in your project
           rotd init
           
+          # Initialize project primer for agent orientation
+          rotd primer init
+          
           # Check project health
           rotd check
           
@@ -87,9 +111,20 @@ jobs:
           rotd coord claim --capability backend_rust
           ```
           
+          ## Key Commands
+          
+          - `rotd primer show` - View project primer
+          - `rotd primer check` - Validate primer accuracy
+          - `rotd --agent primer parse` - Get structured data for agents
+          - `rotd update` - Update project methodology
+          - `rotd upgrade` - Upgrade CLI binary
+          
           Full documentation: https://github.com/jmfigueroa/rotd
         draft: false
-        prerelease: false
+        prerelease: ${{ steps.release_info.outputs.release_type == 'prerelease' }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-release:
     name: Build Release
@@ -115,7 +150,8 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -147,21 +183,20 @@ jobs:
         cd ../../..
     
     - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create-release.outputs.tag_name }}
+        files: ${{ matrix.asset_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./${{ matrix.asset_name }}
-        asset_name: ${{ matrix.asset_name }}
-        asset_content_type: application/octet-stream
 
   build-macos-installer:
     name: Build macOS Installer
     needs: create-release
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -240,7 +275,6 @@ jobs:
         <?xml version="1.0" encoding="utf-8"?>
         <installer-gui-script minSpecVersion="1">
             <title>ROTD CLI ${{ needs.create-release.outputs.tag_name }}</title>
-            <background file="background.png" mime-type="image/png" />
             <welcome file="welcome.html" mime-type="text/html" />
             <conclusion file="conclusion.html" mime-type="text/html" />
             <options customize="never" require-scripts="false" rootVolumeOnly="true" />
@@ -287,6 +321,11 @@ jobs:
             <p><strong>Runtime-Oriented Test Discipline</strong> - A development methodology and CLI tool that enforces systematic test-driven development through continuous task tracking, test summaries, and project health monitoring.</p>
             
             <div class="feature">
+                <h3>🎯 Primer Strategy System</h3>
+                <p>Machine-readable project orientation for LLM agents with structured project information and automated understanding capabilities.</p>
+            </div>
+            
+            <div class="feature">
                 <h3>🤖 Multi-Agent Coordination</h3>
                 <p>Coordinate multiple AI agents or developers working on the same codebase with task claiming, capability routing, and real-time work registries.</p>
             </div>
@@ -294,11 +333,6 @@ jobs:
             <div class="feature">
                 <h3>🔄 Automatic Updates</h3>
                 <p>Use <code>rotd upgrade</code> to automatically download and install CLI updates, or <code>rotd update</code> for project methodology updates.</p>
-            </div>
-            
-            <div class="feature">
-                <h3>📊 Project Health Monitoring</h3>
-                <p>Continuous task tracking, test summaries, and compliance checking to maintain project quality.</p>
             </div>
             
             <p>This installer will place the <code>rotd</code> command in <code>/usr/local/bin</code> and ensure it's available in your PATH.</p>
@@ -331,6 +365,9 @@ jobs:
                 
                 # Initialize ROTD in your project<br>
                 rotd init<br><br>
+                
+                # Initialize project primer<br>
+                rotd primer init<br><br>
                 
                 # Check project health<br>
                 rotd check<br><br>
@@ -366,11 +403,9 @@ jobs:
           rotd-macos-installer.pkg
 
     - name: Upload macOS Installer
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create-release.outputs.tag_name }}
+        files: rotd-macos-installer.pkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./rotd-macos-installer.pkg
-        asset_name: rotd-macos-installer.pkg
-        asset_content_type: application/octet-stream
