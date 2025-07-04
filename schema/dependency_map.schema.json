@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROTD Task Dependency Map",
+  "description": "Schema for task dependency mapping (v1.3.0)",
+  "type": "object",
+  "patternProperties": {
+    "^(\\d+\\.\\d+|cross-\\d+)$": {
+      "type": "array",
+      "description": "List of prerequisite task IDs",
+      "items": {
+        "type": "string",
+        "pattern": "^(\\d+\\.\\d+|cross-\\d+)$",
+        "description": "Task ID that must be completed first"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "4.3": ["4.2"],
+      "6.2": ["4.1", "5.2"],
+      "cross-1": ["6.1", "6.2", "6.3"]
+    }
+  ]
+}

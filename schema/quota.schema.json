@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROTD Quota Tracker",
+  "description": "Schema for tracking token and request usage across agents (v1.3.0)",
+  "type": "object",
+  "required": ["tokens_used", "last_reset", "requests"],
+  "properties": {
+    "tokens_used": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total tokens consumed since last reset"
+    },
+    "last_reset": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last quota reset"
+    },
+    "requests": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total API requests made since last reset"
+    },
+    "daily_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional daily token limit"
+    },
+    "request_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional daily request limit"
+    },
+    "agent_breakdown": {
+      "type": "object",
+      "description": "Optional per-agent usage tracking",
+      "patternProperties": {
+        "^[a-zA-Z0-9-]+$": {
+          "type": "object",
+          "required": ["tokens", "requests"],
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Tokens used by this agent"
+            },
+            "requests": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Requests made by this agent"
+            },
+            "last_activity": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last activity timestamp for this agent"
+            }
+          }
+        }
+      }
+    }
+  }
+}

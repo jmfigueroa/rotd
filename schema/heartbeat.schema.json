@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROTD Agent Heartbeat",
+  "description": "Schema for agent heartbeat files (v1.3.0)",
+  "type": "object",
+  "required": ["agent_id", "last_beat", "pid"],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "description": "UUID of the agent"
+    },
+    "last_beat": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last heartbeat"
+    },
+    "pid": {
+      "type": "integer",
+      "description": "Process ID of the agent"
+    },
+    "hostname": {
+      "type": "string",
+      "description": "Hostname where agent is running"
+    },
+    "agent_type": {
+      "type": "string",
+      "enum": ["opus", "sonnet", "haiku", "gpt-4o", "other"],
+      "description": "Type of AI agent"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["frontend_ts", "backend_rust", "tests_only", "docs", "refactor"]
+      },
+      "description": "Agent's declared capabilities"
+    },
+    "skill_level": {
+      "type": "string",
+      "enum": ["entry", "intermediate", "expert"],
+      "description": "Agent's skill level"
+    },
+    "current_task": {
+      "type": ["string", "null"],
+      "pattern": "^(\\d+\\.\\d+|cross-\\d+)$",
+      "description": "Task currently being worked on"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "working", "reviewing", "blocked"],
+      "description": "Current agent status"
+    }
+  }
+}

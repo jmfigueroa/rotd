@@ -12,7 +12,7 @@ FORCE=false
 CURRENT_DATE=$(date +"%Y-%m-%d")
 # Get current timestamp in ISO format (cross-platform compatible)
 CURRENT_TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S%z")
-LATEST_VERSION="1.2.1"
+LATEST_VERSION="1.3.0"
 GITHUB_REPO_URL="https://github.com/jmfigueroa/rotd"
 
 # Process arguments

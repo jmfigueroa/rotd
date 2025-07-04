@@ -111,5 +111,5 @@ fn test_completions_command() {
     cmd.args(&["completions", "bash"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("rotd"));
+        .stdout(predicate::str::contains("Completions generated"));
 }

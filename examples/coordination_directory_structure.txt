@@ -1,0 +1,21 @@
+.rotd/coordination/
+├── active_work_registry.json    # Central task registry
+├── dependency_map.json          # Task dependency graph
+├── coordination.log             # Append-only event log
+├── quota.json                   # API usage tracking
+├── .lock/
+│   └── registry.lock           # Registry lock file
+└── heartbeat/
+    ├── agent-12345-frontend.beat
+    ├── agent-67890-tests.beat
+    └── agent-99999-backend.beat
+
+# Example agent IDs follow pattern:
+# agent-{uuid}-{capability}
+#
+# Capabilities:
+# - frontend_ts: TypeScript/React frontend work
+# - backend_rust: Rust backend development
+# - tests_only: Test writing and verification
+# - docs: Documentation updates
+# - refactor: Code refactoring tasks

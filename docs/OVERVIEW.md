@@ -1,144 +1,150 @@
-# ROTD Project Overview
+# ROTD Overview
 
-> Quick orientation guide for contributors and users
+> Essential guide to Runtime-Oriented Test Discipline
 
-## 🎯 What is ROTD?
+## What is ROTD?
 
-**Runtime-Oriented Test Discipline (ROTD)** is a test-driven development methodology optimized for LLM workflows, where runtime validation is the single source of truth.
+ROTD (Runtime-Oriented Test Discipline) is a test-anchored, artifact-driven development methodology optimized for LLM-led development. It ensures that runtime validation is the single source of truth while maintaining comprehensive project tracking and learning.
 
-### Key Innovations
+## Core Principles
 
-- **LLM-first design**: Structured for AI-assisted development
-- **Runtime validation**: Tests are the ultimate truth
-- **Agent-aware tooling**: CLI supports both human and LLM users
-- **Systematic progress tracking**: PSS scoring and audit logging
-- **Persistent memory**: Lessons learned across sessions
+1. **Test-Driven**: Every feature needs tests that prove it works
+2. **Runtime Truth**: 100% tests must pass before marking tasks complete
+3. **Clean Code**: No TODOs or stubs on main branch
+4. **Systematic Progress**: Track everything in structured artifacts
+5. **Continuous Learning**: Log failures for future reference
 
-## 🏗️ Project Components
+## Artifact File Locations
 
-### 1. Methodology (docs/ROTD.md)
-The complete ROTD framework including:
-- Core principles and philosophy
-- Artifact structure and schemas
-- Task lifecycle and enforcement rules
-- Progress Scoring System (PSS)
-- Efficiency optimizations for LLM workflows
+All ROTD artifacts are stored in the `.rotd/` directory:
 
-### 2. CLI Tool (src/)
-Rust-based command-line interface with:
-- **Human mode**: Interactive, colored output, helpful prompts
-- **Agent mode**: JSON I/O, strict validation, programmatic use
-- **Safety features**: Dry-run mode, schema validation, audit logging
-- **Cross-platform**: Linux, macOS, Windows support
+```
+.rotd/
+├── tasks.jsonl              # Task tracking (append-only)
+├── test_summaries/          # Test results per task
+│   └── <task_id>.json
+├── lessons_learned.jsonl    # Failure patterns & solutions
+├── pss_scores.jsonl         # Progress scoring results
+├── session_state.json       # Current task & context
+├── coverage_history.json    # Test coverage tracking
+├── audit.log                # Violations & overrides
+└── coordination/            # Multi-agent support (v1.3+)
+    ├── active_work_registry.json
+    ├── dependency_map.json
+    ├── coordination.log
+    ├── quota.json
+    ├── agent_locks/
+    ├── file_locks/
+    ├── heartbeat/
+    └── .lock/
+```
 
-### 3. Documentation (docs/)
-Comprehensive guides including:
-- **prompts.md**: LLM prompts for CLI-enabled and manual workflows
-- **README_CLI.md**: Complete CLI documentation
-- **AGENT_USAGE.md**: Quick reference for LLM agents
-- **CLI_COMMANDS.md**: Command reference with examples
-- **CONTRIBUTING.md**: Developer guidelines
+## Essential CLI Commands
 
-### 4. Examples & Schemas (examples/, schema/)
-Real-world artifacts and validation:
-- JSON schemas for all ROTD data structures
-- Example artifacts from actual projects
-- Validation tools and reference implementations
-
-## 🔄 Typical Workflows
-
-### For LLM Agents (Recommended)
+### Project Setup
 ```bash
-# Initialize project
+rotd init                    # Initialize ROTD project
+rotd check                   # Verify project health
+rotd check --fix             # Auto-fix issues where possible
+```
+
+### Task Management
+```bash
+rotd show-task <task_id>     # View task details
+rotd score <task_id>         # Generate PSS score
+echo '{"id":"X.Y","status":"complete"}' | rotd agent update-task --timestamp
+```
+
+### Information & Learning
+```bash
+rotd show-lessons            # View lessons learned
+rotd show-audit --limit=10   # Recent audit entries
+rotd agent log-lesson        # Record new lesson
+```
+
+### Multi-Agent Coordination (v1.3+)
+```bash
+rotd coord claim             # Claim next available task
+rotd coord release <task_id> # Release completed task
+rotd coord beat              # Update heartbeat
+rotd coord ls                # View work registry
+```
+
+## Task Lifecycle
+
+1. **Scaffolded**: Task created but not started
+2. **In Progress**: Actively being worked on
+3. **Complete**: All tests pass, artifacts logged
+4. **Blocked**: Waiting on dependencies or review (v1.3+)
+5. **Review**: Awaiting approval (v1.3+)
+
+## Progress Scoring System (PSS)
+
+Tasks are scored on a 10-point scale:
+
+- **1-3**: Execution Sanity (engagement, compilation, implementation)
+- **4-6**: Testing Discipline (tests written, passing, quality)
+- **7-8**: Cleanup Discipline (no stubs, documentation)
+- **9-10**: Historical Continuity (artifacts maintained, lessons logged)
+
+**Passing threshold**: Score ≥ 6
+
+## Quick Start Workflow
+
+```bash
+# 1. Initialize project
 rotd init
 
-# Update task status
-echo '{"id":"X.Y","status":"complete"}' | rotd agent update-task --timestamp --pss
-
-# Log test results
-rotd agent append-summary --file test_summaries/X.Y.json
-
-# Record lessons learned
-echo '{"id":"lesson-id","diagnosis":"...","remediation":"..."}' | rotd agent log-lesson
-
-# Check health
+# 2. Check health
 rotd check
+
+# 3. Work on task
+rotd show-task 1.1
+# ... implement feature and tests ...
+
+# 4. Complete task
+echo '{"id":"1.1","status":"complete"}' | rotd agent update-task --timestamp
+rotd agent append-summary --file test_summaries/1.1.json
+
+# 5. Score progress
+rotd score 1.1
+
+# 6. Learn from errors
+echo '{"id":"err-001","diagnosis":"...","remediation":"..."}' | rotd agent log-lesson
 ```
 
-### For Human Developers
+## Multi-Agent Development (v1.3+)
+
+When multiple agents work together:
+
 ```bash
-# Initialize and check health
-rotd init
-rotd check --verbose
+# Agent 1
+export ROTD_AGENT_ID=agent-1
+rotd coord beat
+rotd coord claim --capability backend_rust
+# ... work on task ...
+rotd coord release <task_id>
 
-# Review progress
-rotd show-task X.Y --verbose
-rotd show-lessons --tag=recent
-rotd score X.Y --format summary
-
-# Monitor activity
-rotd show-audit --limit=20
+# Agent 2
+export ROTD_AGENT_ID=agent-2
+rotd coord claim --capability tests_only
 ```
 
-### For Manual Workflows (Fallback)
+## Key Rules
+
+- **Never** mark a task complete without passing tests
+- **Always** use CLI commands (never edit .rotd files manually)
+- **Document** failures as lessons for future sessions
+- **Maintain** clean code (no stubs or TODOs on main)
+- **Track** all work through task IDs
+
+## Getting Help
+
 ```bash
-# Create structure manually
-mkdir -p .rotd/test_summaries
-
-# Use Python scoring
-python scripts/pss_score.py X.Y
-
-# Follow manual prompts from docs/prompts.md
+rotd --help              # General help
+rotd <command> --help    # Command-specific help
+rotd agent info          # Agent command reference
 ```
 
-## 🎨 Design Philosophy
-
-### Clean Architecture
-- **Separation of concerns**: CLI, methodology, documentation
-- **Modular design**: Independent components with clear interfaces
-- **Extensible**: Easy to add new commands and features
-
-### User Experience
-- **Human-friendly defaults**: Colored output, helpful messages
-- **Agent-optimized modes**: JSON I/O, strict validation
-- **Safety first**: Dry-run mode, validation, rollback capabilities
-
-### Developer Experience
-- **Clear documentation**: Comprehensive guides and examples
-- **Easy contribution**: Well-defined processes and standards
-- **Quality assurance**: CI/CD, testing, linting
-
-## 🚀 Getting Started
-
-### For Users
-1. **Install**: `curl -sSL https://raw.githubusercontent.com/jmfigueroa/rotd/main/scripts/install.sh | bash`
-2. **Initialize**: `rotd init`
-3. **Learn**: Read [docs/ROTD.md](./ROTD.md) for methodology details
-
-### For Contributors
-1. **Clone**: `git clone https://github.com/jmfigueroa/rotd.git`
-2. **Build**: `cargo build`
-3. **Test**: `cargo test`
-4. **Read**: [docs/CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines
-
-### For LLM Integration
-1. **Install CLI**: Follow installation guide
-2. **Use prompts**: Reference [docs/prompts.md](./prompts.md)
-3. **Agent commands**: See [docs/AGENT_USAGE.md](./AGENT_USAGE.md)
-
-## 📊 Project Status
-
-- **Version**: 0.1.0 (initial release)
-- **Language**: Rust (CLI), Python (scripts)
-- **License**: MIT
-- **Platform**: Cross-platform (Linux, macOS, Windows)
-- **CI/CD**: GitHub Actions with automated testing and releases
-
-## 🤝 Community
-
-- **Issues**: Bug reports and feature requests
-- **Discussions**: Questions and ideas
-- **Pull Requests**: Code contributions welcome
-- **Documentation**: Help improve guides and examples
-
-This project bridges the gap between traditional software development practices and modern AI-assisted workflows, providing structure without sacrificing the flexibility that makes LLM collaboration effective.
+For detailed methodology: See [ROTD.md](./ROTD.md)
+For CLI reference: See [CLI_COMMANDS.md](./CLI_COMMANDS.md)

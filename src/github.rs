@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn test_extract_changes() {
         let body = r#"
-# Release v1.2.1
+# Release v1.3.0
 
 This release includes:
 

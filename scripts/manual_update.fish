@@ -6,7 +6,7 @@
 # Configuration
 set -l DRY_RUN false
 set -l FORCE false
-set -l LATEST_VERSION "1.2.1"
+set -l LATEST_VERSION "1.3.0"
 set -l GITHUB_REPO_URL "https://github.com/jmfigueroa/rotd"
 
 # Get current date and timestamp in a cross-platform way

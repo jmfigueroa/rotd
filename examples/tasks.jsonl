@@ -4,3 +4,5 @@
 {"id":"7.1","phase":"7","title":"Fix CI pipeline failures","status":"in_progress","tests":["tests/ci/integration.test.js"],"created":"2025-07-03T08:00:00Z","priority":"urgent","priority_score":98.5,"implementation_notes":"CI is blocking all merges"}
 {"id":"3.2","phase":"3","title":"Add user preferences storage","status":"pending","tests":["tests/preferences.test.ts"],"created":"2025-07-03T09:00:00Z","priority":"low","priority_score":35.0}
 {"id":"8.1","phase":"8","title":"Major architecture refactor","status":"pending","tests":[],"created":"2025-07-03T10:00:00Z","priority":"deferred","implementation_notes":"Planned for v2.0 release"}
+{"id":"1.1","phase":"1","title":"Setup basic Rust backend","status":"complete","tests":["tests/backend/setup.test.rs"],"created":"2025-07-04T08:00:00Z","completed":"2025-07-04T09:30:00Z"}
+{"id":"2.2","phase":"2","title":"Implement user authentication","status":"pending","tests":["tests/auth/login.test.ts"],"created":"2025-07-04T10:00:00Z","priority":"high","depends_on":["1.1"]}

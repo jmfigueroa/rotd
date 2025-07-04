@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ROTD Active Work Registry",
+  "description": "Schema for multi-agent work coordination registry (v1.3.0)",
+  "type": "object",
+  "required": ["tasks"],
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "description": "List of tasks available for claiming",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(\\d+\\.\\d+|cross-\\d+)$",
+            "description": "Task identifier matching tasks.jsonl"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable task title"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["unclaimed", "claimed", "blocked", "review", "done"],
+            "description": "Current task status in coordination system"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["urgent", "high", "medium", "low"],
+            "description": "Task priority level for claim ordering"
+          },
+          "claimed_by": {
+            "type": ["string", "null"],
+            "description": "Agent UUID that owns this task"
+          },
+          "claimed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when task was claimed"
+          },
+          "completed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when task was completed"
+          },
+          "blocked_reason": {
+            "type": ["string", "null"],
+            "description": "Reason why task is blocked (only when status=blocked)"
+          },
+          "reviewer_id": {
+            "type": ["string", "null"],
+            "description": "Agent or human ID who approved the review"
+          },
+          "capability": {
+            "type": "string",
+            "enum": ["frontend_ts", "backend_rust", "tests_only", "docs", "refactor"],
+            "description": "Required capability for this task"
+          },
+          "skill_level": {
+            "type": "string",
+            "enum": ["entry", "intermediate", "expert"],
+            "description": "Required skill level for this task"
+          },
+          "deps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(\\d+\\.\\d+|cross-\\d+)$"
+            },
+            "description": "Task IDs that must be completed before this task"
+          }
+        }
+      }
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last registry update"
+    }
+  }
+}

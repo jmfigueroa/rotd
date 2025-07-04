@@ -1,0 +1,69 @@
+{
+  "tasks": [
+    {
+      "id": "2.1",
+      "title": "Chat interface layout",
+      "status": "claimed",
+      "priority": "high",
+      "claimed_by": "agent-12345-frontend",
+      "claimed_at": "2025-07-04T10:00:00Z",
+      "completed_at": null,
+      "blocked_reason": null,
+      "reviewer_id": null,
+      "capability": "frontend_ts",
+      "skill_level": "intermediate"
+    },
+    {
+      "id": "3.1",
+      "title": "Implement database migrations",
+      "status": "unclaimed",
+      "priority": "urgent",
+      "claimed_by": null,
+      "claimed_at": null,
+      "completed_at": null,
+      "blocked_reason": null,
+      "reviewer_id": null,
+      "capability": "backend_rust",
+      "skill_level": "expert"
+    },
+    {
+      "id": "1.2",
+      "title": "Add unit tests for auth module",
+      "status": "review",
+      "priority": "medium",
+      "claimed_by": "agent-67890-tests",
+      "claimed_at": "2025-07-04T08:00:00Z",
+      "completed_at": "2025-07-04T09:30:00Z",
+      "blocked_reason": null,
+      "reviewer_id": "agent-11111-senior",
+      "capability": "tests_only",
+      "skill_level": "entry"
+    },
+    {
+      "id": "4.1",
+      "title": "Refactor legacy API endpoints",
+      "status": "blocked",
+      "priority": "low",
+      "claimed_by": "agent-99999-backend",
+      "claimed_at": "2025-07-04T07:00:00Z",
+      "completed_at": null,
+      "blocked_reason": "Waiting for database schema finalization",
+      "reviewer_id": null,
+      "capability": "refactor",
+      "skill_level": "intermediate"
+    },
+    {
+      "id": "5.1",
+      "title": "Update API documentation",
+      "status": "done",
+      "priority": "medium",
+      "claimed_by": "agent-22222-docs",
+      "claimed_at": "2025-07-03T14:00:00Z",
+      "completed_at": "2025-07-03T16:30:00Z",
+      "blocked_reason": null,
+      "reviewer_id": "agent-33333-reviewer",
+      "capability": "docs",
+      "skill_level": "entry"
+    }
+  ]
+}

@@ -63,6 +63,28 @@
     "implementation_notes": {
       "type": "string",
       "description": "Additional implementation details"
+    },
+    "capability": {
+      "type": "string",
+      "enum": ["frontend_ts", "backend_rust", "tests_only", "docs", "refactor"],
+      "description": "Required capability for this task (v1.3.0)"
+    },
+    "skill_level": {
+      "type": "string",
+      "enum": ["entry", "intermediate", "expert"],
+      "description": "Required skill level for this task (v1.3.0)"
+    },
+    "deps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(\\d+\\.\\d+|cross-\\d+)$"
+      },
+      "description": "Task IDs that must be completed before this task (v1.3.0)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the task (v1.3.0)"
     }
   }
 }

@@ -13,25 +13,39 @@ Each ROTD update includes a manifest file `.rotd/update_manifest.json`:
 
 ```json
 {
-  "version": "1.2.0",
-  "date": "2025-07-03",
+  "version": "1.3.0",
+  "date": "2025-07-04",
   "changes": [
     {
       "type": "feature",
-      "component": "task_schema",
-      "description": "Added priority field with 5-level system",
+      "component": "multi_agent",
+      "description": "Added multi-agent coordination system",
       "breaking": false,
       "migration_required": true
     },
     {
-      "type": "feature", 
-      "component": "workflow",
-      "description": "Added periodic review process",
+      "type": "feature",
+      "component": "task_schema",
+      "description": "Added capability and skill_level fields for task routing",
+      "breaking": false,
+      "migration_required": true
+    },
+    {
+      "type": "feature",
+      "component": "coordination",
+      "description": "Added coordination directory with registry, locks, and heartbeats",
+      "breaking": false,
+      "migration_required": true
+    },
+    {
+      "type": "feature",
+      "component": "cli",
+      "description": "Added coord subcommands for multi-agent operations",
       "breaking": false,
       "migration_required": false
     }
   ],
-  "previous_version": "1.1.0"
+  "previous_version": "1.2.1"
 }
 ```
 
@@ -125,28 +139,39 @@ ROTD Update Required: Review and apply methodology updates to this project.
 ```
 Apply ROTD Schema Updates:
 
-📦 **Migration Task**: Update task.jsonl schema from v1.1.0 to v1.2.0
+📦 **Migration Task**: Update schema from v1.2.1 to v1.3.0 for multi-agent support
 
 **Changes to Apply**:
-1. Add "priority" field (enum: urgent|high|medium|low|deferred)
-2. Add optional "priority_score" field (0-100)
+1. Add "capability" field to tasks (enum: frontend_ts|backend_rust|tests_only|docs|refactor)
+2. Add "skill_level" field to tasks (enum: entry|intermediate|expert)
+3. Create `.rotd/coordination/` directory structure:
+   - active_work_registry.json
+   - dependency_map.json
+   - quota.json
+   - agent_locks/
+   - file_locks/
+   - heartbeat/
+   - .lock/
+   - coordination.log
 
 **Migration Steps**:
-1. Read each line of `.rotd/tasks.jsonl`
-2. Parse JSON object
-3. Add default priority based on:
-   - "blocked" status → "urgent"
-   - "in_progress" → "high"  
-   - "pending" → "medium"
-   - "complete" → "low"
-4. Write updated line to new file
-5. Validate all entries
-6. Replace original with backup
+1. Create coordination directory structure
+2. Read each line of `.rotd/tasks.jsonl`
+3. Add default capability based on task title/description:
+   - Contains "test" → "tests_only"
+   - Contains "UI"/"frontend" → "frontend_ts"
+   - Contains "docs" → "docs"
+   - Default → "backend_rust"
+4. Add default skill_level: "intermediate"
+5. Build active_work_registry.json from incomplete tasks
+6. Extract dependencies from task descriptions or deps field
+7. Initialize empty quota.json
 
 **Verification**:
-- All tasks have valid priority field
-- Schema validation passes
-- No data loss occurred
+- Coordination directory exists with all subdirectories
+- All tasks have capability and skill_level fields
+- Work registry contains all incomplete tasks
+- `rotd coord ls` shows task list
 ```
 
 ### Workflow Addition Prompt
@@ -211,24 +236,32 @@ cp .rotd/backup/* .rotd/
 
 ### Update Announcement Template
 ```markdown
-## ROTD Update: v1.2.0
+## ROTD Update: v1.3.0 - Multi-Agent Coordination
 
 ### What's New
-- Task prioritization system (5 levels + optional scoring)
-- Periodic review process for project health
-- Enhanced schema validation
+- Multi-agent coordination system for parallel development
+- Agent heartbeat mechanism with automatic stale lock recovery
+- Task claiming with capability and skill level filtering
+- Priority-aware task assignment (urgent > high > medium > low)
+- Coordination commands: claim, release, approve, beat, etc.
+- Artifact-level file locking for concurrent safety
+- Work registry with full task lifecycle tracking
+- Dependency validation during task claiming
 
 ### Migration Required
-- Existing tasks will receive default priorities
+- Creates new `.rotd/coordination/` directory structure
+- Adds capability and skill_level fields to tasks
+- Initializes work registry and dependency map
 - Run update prompt to apply changes
 
 ### Breaking Changes
-- None
+- None (backward compatible with single-agent workflows)
 
 ### How to Update
 1. Pull latest ROTD version
-2. Use update prompt with your LLM
+2. Use multi-agent update prompt with your LLM
 3. Verify with `rotd check --strict`
+4. Test coordination with `rotd coord ls`
 ```
 
 ## Best Practices
@@ -250,7 +283,9 @@ cp .rotd/backup/* .rotd/
 
 Maintain `.rotd/update_history.jsonl`:
 ```json
-{"version":"1.2.0","updated_at":"2025-07-03T10:00:00Z","updated_by":"Claude","status":"success"}
+{"version":"1.3.0","updated_at":"2025-07-04T14:00:00Z","updated_by":"Claude","status":"success"}
+{"version":"1.2.1","updated_at":"2025-07-03T10:00:00Z","updated_by":"Claude","status":"success"}
+{"version":"1.2.0","updated_at":"2025-07-02T10:00:00Z","updated_by":"Claude","status":"success"}
 {"version":"1.1.0","updated_at":"2025-06-15T09:00:00Z","updated_by":"GPT-4","status":"success"}
 ```
 
