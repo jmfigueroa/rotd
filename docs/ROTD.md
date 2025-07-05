@@ -16,12 +16,14 @@ Create a `.rotd/` directory (note the leading dot):
 .rotd/                       # ROTD-specific directory (hidden)
 ├── tasks.jsonl              # Append-only task log
 ├── test_summaries/          # Proof of completion: <task_id>.json
+├── task_history/            # Per-task change history: <task_id>.jsonl
 ├── lessons_learned.jsonl    # Reusable failure/fix patterns
 ├── audit.log                # Rule violations (JSONL)
 ├── stub_report.json         # CI-generated stub tracking
 ├── session_state.json       # Delta prompting & efficiency tracking
 ├── coverage_history.json    # Adaptive coverage progression
-└── pss_scores.jsonl         # Progress Scoring System results
+├── pss_scores.jsonl         # Progress Scoring System results
+└── config.jsonc             # ROTD configuration with history management settings
 ```
 
 ## Core Rules
@@ -87,6 +89,33 @@ Append-only log, one JSON object per line:
 ```json
 {"id":"TRACE_NO_FOOTER","first":"2025-06-30","root":"Missing Task-ID footer",
  "fix":"Git commit.template + pre-commit hook","verify":"passes rotd_check"}
+```
+
+### Task History
+Each task has its own history file in `.rotd/task_history/<task_id>.jsonl` that tracks:
+- Status changes with timestamps and agent IDs
+- Comments explaining changes
+- PSS score deltas
+- Previous status for audit trail
+
+Example entry:
+```json
+{"task_id":"6.2","agent_id":"claude-20250105","timestamp":"2025-01-05T10:00:00Z",
+ "status":"complete","prev_status":"in_progress","comment":"All tests passing",
+ "pss_delta":2.0,"schema":"task_history.v1"}
+```
+
+### Config File
+`.rotd/config.jsonc` supports configuration with comments:
+```jsonc
+{
+  // Max uncompressed size per task history before rotation (MiB)
+  "history_max_size_mib": 1,
+  // Compress closed tasks? ("closed" means status == "complete")
+  "history_compress_closed": true,
+  // Hard cap on total history directory size (MiB)
+  "history_total_cap_mib": 100
+}
 ```
 
 ## "Now & Later" Stubs

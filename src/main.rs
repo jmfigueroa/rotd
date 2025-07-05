@@ -8,6 +8,7 @@ mod common;
 mod coord;
 mod fs_ops;
 mod github;
+mod history;
 mod human;
 mod pss;
 mod schema;
@@ -252,6 +253,22 @@ enum CoordCommands {
 
     /// List current work registry
     Ls,
+
+    /// View task history
+    History {
+        /// Task ID to view history for
+        task_id: String,
+        /// Output format: summary (default), json, or stats
+        #[arg(long, default_value = "summary")]
+        format: String,
+    },
+
+    /// Prune old history files
+    PruneHistory {
+        /// Only show what would be pruned, don't actually prune
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]

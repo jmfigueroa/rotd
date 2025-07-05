@@ -47,6 +47,24 @@ rotd agent ratchet-coverage 87.5 --task-id 6.2
 rotd --agent check
 ```
 
+### View Task History
+```bash
+# View history for a specific task
+rotd coord history <task_id>
+
+# Output formats: summary (default), json, stats
+rotd coord history 6.2 --format json
+```
+
+### Manage History Storage
+```bash
+# Prune/compress old history files
+rotd coord prune-history
+
+# Dry run to see what would be pruned
+rotd coord prune-history --dry-run
+```
+
 ## 📊 JSON Schemas
 
 ### Task Update Schema
@@ -146,6 +164,40 @@ echo '{"id":"6.3","priority":"urgent","priority_score":95.0}' | rotd agent updat
 {"status":"success","action":"update_task","task_id":"6.2"}
 ```
 
+### Task History Output (JSON format)
+```json
+[
+  {
+    "task_id": "6.2",
+    "agent_id": "claude-20250105",
+    "timestamp": "2025-01-05T10:00:00Z",
+    "status": "in_progress",
+    "prev_status": "pending",
+    "comment": "Starting implementation",
+    "pss_delta": null,
+    "schema": "task_history.v1"
+  }
+]
+```
+
+### Task History Stats Output
+```json
+{
+  "task_id": "6.2",
+  "total_events": 5,
+  "status_counts": {
+    "pending": 1,
+    "in_progress": 2,
+    "complete": 2
+  },
+  "agent_contributions": {
+    "claude-20250105": 3,
+    "claude-20250104": 2
+  },
+  "total_pss_delta": 4.5
+}
+```
+
 ### Health Check Output
 ```json
 {"health_score":4,"total_checks":5,"passed":4,"issues":["missing_test_summaries"],"health_percentage":80.0}
@@ -175,5 +227,22 @@ rotd show-audit --limit=5
 # Get command help
 rotd agent info
 ```
+
+## 📊 Task History Tracking
+
+ROTD automatically tracks task history when using `update-task` commands. Each status change is recorded in `.rotd/task_history/<task_id>.jsonl` with:
+
+- **Agent ID**: Who made the change
+- **Timestamp**: When the change occurred
+- **Status transition**: Previous and new status
+- **Comments**: Optional context for the change
+- **PSS delta**: Change in Progress Score if applicable
+
+### History Management Configuration
+
+History storage is configured in `.rotd/config.jsonc`:
+- `history_max_size_mib`: Max size per task history file (default: 1 MiB)
+- `history_compress_closed`: Compress completed task histories (default: true)
+- `history_total_cap_mib`: Total history directory size limit (default: 100 MiB)
 
 This guide provides everything an LLM agent needs to effectively use the ROTD CLI for project management and artifact tracking.

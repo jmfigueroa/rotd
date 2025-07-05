@@ -49,7 +49,6 @@ ROTD is designed for LLM-assisted development where:
 - **[scripts/install.sh](./scripts/install.sh)** - One-line installation script
 - **[docs/README_CLI.md](./docs/README_CLI.md)** - Complete CLI documentation
 - **[docs/AGENT_USAGE.md](./docs/AGENT_USAGE.md)** - Quick reference for LLM agents
-- **[docs/CLI_COMMANDS.md](./docs/CLI_COMMANDS.md)** - Command reference and examples
 
 ## Key Principles
 
@@ -65,11 +64,13 @@ ROTD is designed for LLM-assisted development where:
 .rotd/                       # ROTD directory (hidden)
 ├── tasks.jsonl              # Append-only task log
 ├── test_summaries/          # Proof of completion
+├── task_history/            # Per-task change history
 ├── lessons_learned.jsonl    # Reusable failure patterns
 ├── pss_scores.jsonl         # Progress scoring results
 ├── session_state.json       # Delta prompting state
 ├── coverage_history.json    # Adaptive coverage tracking
-└── audit.log                # Rule violations
+├── audit.log                # Rule violations
+└── config.jsonc             # ROTD configuration
 ```
 
 ## Progress Scoring System (PSS)

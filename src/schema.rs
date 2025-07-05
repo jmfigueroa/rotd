@@ -56,7 +56,7 @@ pub struct ActiveWorkRegistry {
     pub tasks: Vec<RegistryEntry>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
     Urgent,
@@ -276,3 +276,87 @@ pub struct ComponentInfo {
     pub description: String,
     pub files: Vec<String>,
 }
+
+// Task History structures
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TaskHistoryEvent {
+    pub timestamp: DateTime<Utc>,
+    pub task_id: String,
+    pub agent_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev_status: Option<String>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev_priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev_capability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pss_delta: Option<f64>,
+    #[serde(rename = "_schema")]
+    pub schema: String,
+}
+
+impl TaskHistoryEvent {
+    pub fn new(task_id: String, agent_id: String, status: String) -> Self {
+        Self {
+            timestamp: Utc::now(),
+            task_id,
+            agent_id,
+            status,
+            prev_status: None,
+            prev_priority: None,
+            priority: None,
+            prev_capability: None,
+            capability: None,
+            comment: None,
+            pss_delta: None,
+            schema: "task_history.v1".to_string(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.task_id.is_empty() {
+            return Err(anyhow::anyhow!("Task ID cannot be empty"));
+        }
+        if self.agent_id.is_empty() {
+            return Err(anyhow::anyhow!("Agent ID cannot be empty"));
+        }
+        if let Some(comment) = &self.comment {
+            if comment.len() > 280 {
+                return Err(anyhow::anyhow!("Comment exceeds 280 character limit"));
+            }
+        }
+        Ok(())
+    }
+}
+
+// ROTD Configuration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RotdConfig {
+    #[serde(default = "default_history_max_size_mib")]
+    pub history_max_size_mib: u64,
+    #[serde(default = "default_history_compress_closed")]
+    pub history_compress_closed: bool,
+    #[serde(default = "default_history_total_cap_mib")]
+    pub history_total_cap_mib: u64,
+}
+
+impl Default for RotdConfig {
+    fn default() -> Self {
+        Self {
+            history_max_size_mib: default_history_max_size_mib(),
+            history_compress_closed: default_history_compress_closed(),
+            history_total_cap_mib: default_history_total_cap_mib(),
+        }
+    }
+}
+
+fn default_history_max_size_mib() -> u64 { 1 }
+fn default_history_compress_closed() -> bool { true }
+fn default_history_total_cap_mib() -> u64 { 100 }

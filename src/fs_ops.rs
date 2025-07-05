@@ -177,7 +177,17 @@ pub fn safe_update_task(task: &TaskEntry, dry_run: bool) -> Result<()> {
         return Ok(());
     }
 
-    append_jsonl(&crate::common::tasks_path(), task)
+    // Get previous task state for history
+    let tasks = read_jsonl::<TaskEntry>(&crate::common::tasks_path())?;
+    let prev_task = tasks.iter().rev().find(|t| t.id == task.id);
+
+    // Append to main tasks file
+    append_jsonl(&crate::common::tasks_path(), task)?;
+
+    // Append to task history
+    crate::history::append_task_history(task, prev_task, None, None)?;
+
+    Ok(())
 }
 
 pub fn safe_append_summary(summary: &TestSummary, dry_run: bool) -> Result<()> {

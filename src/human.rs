@@ -48,6 +48,7 @@ pub fn init(force: bool, dry_run: bool, verbose: bool) -> Result<()> {
     // Create directory structure
     std::fs::create_dir_all(&rotd_dir)?;
     std::fs::create_dir_all(crate::common::test_summaries_path())?;
+    std::fs::create_dir_all(crate::common::task_history_path())?;
 
     // Create initial files with templates
     create_initial_files(verbose)?;
@@ -70,7 +71,7 @@ pub fn update(check_only: bool, yes: bool, verbose: bool) -> Result<()> {
         let v: ProjectVersion = read_json(&version_path)?;
         v.version
     } else {
-        "1.3.3".to_string()
+        "1.3.5".to_string()
     };
 
     // The latest methodology version available
@@ -524,7 +525,7 @@ fn create_initial_files(verbose: bool) -> Result<()> {
 
     // Create version tracking
     let version = ProjectVersion {
-        version: "1.3.3".to_string(),
+        version: "1.3.5".to_string(),
         manifest_hash: None,
         updated_at: Some(chrono::Utc::now()),
     };
@@ -534,6 +535,14 @@ fn create_initial_files(verbose: bool) -> Result<()> {
     }
 
     write_json(&crate::common::rotd_path().join("version.json"), &version)?;
+
+    // Create default config
+    let config = crate::schema::RotdConfig::default();
+    crate::history::save_config(&config)?;
+
+    if verbose {
+        println!("Creating default configuration...");
+    }
 
     Ok(())
 }

@@ -12,6 +12,8 @@ pub const TEST_SUMMARIES_DIR: &str = "test_summaries";
 pub const COORDINATION_DIR: &str = "coordination";
 #[allow(dead_code)]
 pub const ACTIVE_WORK_REGISTRY_FILE: &str = "active_work_registry.json";
+pub const TASK_HISTORY_DIR: &str = "task_history";
+pub const CONFIG_FILE: &str = "config.jsonc";
 
 pub fn rotd_path() -> PathBuf {
     Path::new(ROTD_DIR).to_path_buf()
@@ -54,6 +56,18 @@ pub fn test_summaries_path() -> PathBuf {
 
 pub fn test_summary_file(task_id: &str) -> PathBuf {
     test_summaries_path().join(format!("{}.json", task_id))
+}
+
+pub fn task_history_path() -> PathBuf {
+    rotd_path().join(TASK_HISTORY_DIR)
+}
+
+pub fn task_history_file(task_id: &str) -> PathBuf {
+    task_history_path().join(format!("{}.jsonl", task_id))
+}
+
+pub fn config_path() -> PathBuf {
+    rotd_path().join(CONFIG_FILE)
 }
 
 pub fn check_rotd_initialized() -> anyhow::Result<()> {

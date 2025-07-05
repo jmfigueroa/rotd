@@ -210,6 +210,8 @@ pub fn handle_command(cmd: CoordCommands, is_agent_mode: bool, verbose: bool) ->
         CoordCommands::CleanStale { timeout } => cmd_clean_stale(timeout, is_agent_mode),
         CoordCommands::Quota { add } => cmd_quota(add, is_agent_mode),
         CoordCommands::Ls => cmd_ls(is_agent_mode, verbose),
+        CoordCommands::History { task_id, format } => cmd_history(&task_id, &format, is_agent_mode),
+        CoordCommands::PruneHistory { dry_run } => cmd_prune_history(dry_run, is_agent_mode),
     }
 }
 
@@ -591,6 +593,176 @@ fn cmd_ls(is_agent_mode: bool, verbose: bool) -> Result<()> {
                     println!("      Blocked: {}", reason);
                 }
             }
+        }
+    }
+
+    Ok(())
+}
+
+fn cmd_history(task_id: &str, format: &str, is_agent_mode: bool) -> Result<()> {
+    use crate::history;
+    use colored::Colorize;
+
+    match format {
+        "json" => {
+            let events = history::read_task_history(task_id)?;
+            if is_agent_mode {
+                println!("{}", serde_json::to_string(&events)?);
+            } else {
+                println!("{}", serde_json::to_string_pretty(&events)?);
+            }
+        }
+        "stats" => {
+            let stats = history::get_task_history_stats(task_id)?;
+            if is_agent_mode {
+                let json_stats = serde_json::json!({
+                    "task_id": task_id,
+                    "total_events": stats.total_events,
+                    "status_counts": stats.status_counts,
+                    "agent_contributions": stats.agent_contributions,
+                    "total_pss_delta": stats.total_pss_delta,
+                });
+                println!("{}", serde_json::to_string(&json_stats)?);
+            } else {
+                println!("\n{}", format!("Task History Statistics: {}", task_id).bold());
+                println!("{}", "=".repeat(50));
+                println!("Total events: {}", stats.total_events);
+                println!("\nStatus distribution:");
+                for (status, count) in &stats.status_counts {
+                    println!("  {:>15}: {}", status, count);
+                }
+                println!("\nAgent contributions:");
+                for (agent, count) in &stats.agent_contributions {
+                    println!("  {:>15}: {} events", agent, count);
+                }
+                if stats.total_pss_delta.abs() > 0.0 {
+                    println!("\nTotal PSS delta: {:+.1}", stats.total_pss_delta);
+                }
+            }
+        }
+        _ => {
+            // Default: summary format
+            let events = history::read_task_history(task_id)?;
+            if is_agent_mode {
+                let summary: Vec<_> = events.iter().map(|e| {
+                    serde_json::json!({
+                        "timestamp": e.timestamp,
+                        "agent": e.agent_id,
+                        "status": e.status,
+                        "comment": e.comment,
+                    })
+                }).collect();
+                println!("{}", serde_json::to_string(&summary)?);
+            } else {
+                println!("\n{}", format!("Task History: {}", task_id).bold());
+                println!("{}", "=".repeat(80));
+                
+                if events.is_empty() {
+                    println!("No history found for task {}", task_id);
+                } else {
+                    println!("{:<20} {:<15} {:<15} {:<30}", "Timestamp", "Agent", "Status", "Comment");
+                    println!("{}", "-".repeat(80));
+                    
+                    for event in events {
+                        let timestamp = event.timestamp.format("%Y-%m-%d %H:%M:%S");
+                        let status_change = if let Some(prev) = &event.prev_status {
+                            format!("{} → {}", prev, event.status)
+                        } else {
+                            event.status.clone()
+                        };
+                        let comment = event.comment.as_deref().unwrap_or("");
+                        
+                        println!("{:<20} {:<15} {:<15} {:<30}", 
+                            timestamp, 
+                            event.agent_id, 
+                            status_change,
+                            comment
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn cmd_prune_history(dry_run: bool, is_agent_mode: bool) -> Result<()> {
+    use crate::history;
+    use crate::fs_ops::read_jsonl;
+    use crate::schema::TaskEntry;
+    use std::fs;
+
+    let config = history::load_config()?;
+    let history_dir = crate::common::task_history_path();
+    
+    if !history_dir.exists() {
+        if is_agent_mode {
+            println!(r#"{{"status":"no_history_dir"}}"#);
+        } else {
+            println!("No task history directory found");
+        }
+        return Ok(());
+    }
+
+    // Load current task statuses
+    let tasks: Vec<TaskEntry> = read_jsonl(&crate::common::tasks_path())?;
+    let mut task_status_map = std::collections::HashMap::new();
+    
+    // Get the latest status for each task
+    for task in tasks {
+        task_status_map.insert(task.id.clone(), task.status);
+    }
+
+    let mut files_to_compress = Vec::new();
+    let mut total_size_mib = 0.0;
+
+    // Check each history file
+    for entry in fs::read_dir(&history_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+            let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+            let size_mib = history::get_history_size_mib(file_name)?;
+            total_size_mib += size_mib;
+
+            // Check if this task is complete and file is large enough
+            if let Some(status) = task_status_map.get(file_name) {
+                if matches!(status, crate::schema::TaskStatus::Complete) 
+                    && size_mib > config.history_max_size_mib as f64 {
+                    files_to_compress.push((file_name.to_string(), size_mib));
+                }
+            }
+        }
+    }
+
+    if is_agent_mode {
+        let result = serde_json::json!({
+            "total_size_mib": total_size_mib,
+            "files_to_compress": files_to_compress.len(),
+            "dry_run": dry_run,
+        });
+        println!("{}", serde_json::to_string(&result)?);
+    } else {
+        println!("\nTask History Storage Summary");
+        println!("{}", "=".repeat(50));
+        println!("Total size: {:.2} MiB", total_size_mib);
+        println!("Config limit: {} MiB", config.history_total_cap_mib);
+        
+        if !files_to_compress.is_empty() {
+            println!("\nFiles eligible for compression:");
+            for (task_id, size) in &files_to_compress {
+                println!("  {} ({:.2} MiB)", task_id, size);
+            }
+            
+            if !dry_run {
+                println!("\nCompressing files...");
+                // TODO: Implement actual compression using flate2
+                println!("Compression not yet implemented");
+            }
+        } else {
+            println!("\nNo files need compression");
         }
     }
 

@@ -9,6 +9,11 @@ This directory contains JSON schemas for validating ROTD data structures.
 
 - **pss_score.schema.json** - Progress Scoring System entries in pss_scores.jsonl
 
+- **task_history.v1.json** - Task history entries in task_history/<task_id>.jsonl (v1.3.5+)
+  - Tracks all task status changes with timestamps and agent IDs
+  - Includes previous status for audit trail
+  - Optional comments and PSS score deltas
+
 ## Multi-Agent Coordination Schemas (v1.3.0)
 
 - **work_registry.schema.json** - Active work registry for task coordination
@@ -51,3 +56,4 @@ python -m jsonschema.cli schema/work_registry.schema.json .rotd/coordination/act
 
 - v1.0.0 - Initial schemas (task, pss_score)
 - v1.3.0 - Multi-agent coordination schemas and task schema updates
+- v1.3.5 - Task history schema for comprehensive audit trails

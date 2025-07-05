@@ -1,0 +1,65 @@
+{
+  "$id": "https://rotd.dev/schema/task_history.v1.json",
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "ROTD Task History Event",
+  "description": "Schema for task history events in ROTD",
+  "type": "object",
+  "required": ["timestamp", "task_id", "agent_id", "status", "_schema"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the event"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$|^init$",
+      "description": "Task identifier (e.g., '1.2', 'init')"
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Agent identifier from $ROTD_AGENT_ID or 'human'"
+    },
+    "prev_status": {
+      "type": "string",
+      "description": "Status before change"
+    },
+    "status": {
+      "type": "string",
+      "description": "Status after change"
+    },
+    "prev_priority": {
+      "type": "string",
+      "enum": ["urgent", "high", "medium", "low", "deferred"],
+      "description": "Priority before change"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["urgent", "high", "medium", "low", "deferred"],
+      "description": "Priority after change"
+    },
+    "prev_capability": {
+      "type": "string",
+      "description": "Capability before change"
+    },
+    "capability": {
+      "type": "string",
+      "description": "Capability after change"
+    },
+    "comment": {
+      "type": "string",
+      "maxLength": 280,
+      "description": "Free-text note about the change"
+    },
+    "pss_delta": {
+      "type": "number",
+      "description": "Change in PSS score this update"
+    },
+    "_schema": {
+      "const": "task_history.v1",
+      "description": "Schema version identifier"
+    }
+  },
+  "additionalProperties": false
+}

@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Task History Tracking**: Comprehensive audit trail for task status changes
+  - `.rotd/task_history/` directory with per-task JSONL files
+  - Automatic history recording on every task update
+  - Agent ID and timestamp tracking for all changes
+  - Previous status retention for audit trail
+  - Optional comments and PSS score deltas
+  - `rotd coord history <task_id>` command with multiple output formats (summary, json, stats)
+  - `rotd coord prune-history` command for history management
+  - Configurable history size limits and compression settings
+- **ROTD Configuration File**: `.rotd/config.jsonc` with JSONC support
+  - `history_max_size_mib`: Maximum uncompressed size per task history file
+  - `history_compress_closed`: Auto-compress completed task histories
+  - `history_total_cap_mib`: Hard cap on total history directory size
 - Advanced quota management features (planned)
 - Task graph visualization (planned)
 - Distributed coordination support (planned)

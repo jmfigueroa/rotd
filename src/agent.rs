@@ -61,6 +61,7 @@ pub fn init(force: bool, dry_run: bool) -> Result<()> {
     // Create directory structure
     std::fs::create_dir_all(&rotd_dir)?;
     std::fs::create_dir_all(crate::common::test_summaries_path())?;
+    std::fs::create_dir_all(crate::common::task_history_path())?;
 
     // Create initial files
     let initial_task = TaskEntry {
@@ -99,6 +100,10 @@ pub fn init(force: bool, dry_run: bool) -> Result<()> {
     };
 
     write_json(&crate::common::coverage_history_path(), &coverage_history)?;
+
+    // Create default config
+    let config = crate::schema::RotdConfig::default();
+    crate::history::save_config(&config)?;
 
     println!("{{\"status\":\"success\",\"action\":\"init\"}}");
     Ok(())

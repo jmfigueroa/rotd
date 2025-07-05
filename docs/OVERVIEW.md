@@ -23,11 +23,14 @@ All ROTD artifacts are stored in the `.rotd/` directory:
 ├── tasks.jsonl              # Task tracking (append-only)
 ├── test_summaries/          # Test results per task
 │   └── <task_id>.json
+├── task_history/            # Per-task change history (v1.3.5+)
+│   └── <task_id>.jsonl
 ├── lessons_learned.jsonl    # Failure patterns & solutions
 ├── pss_scores.jsonl         # Progress scoring results
 ├── session_state.json       # Current task & context
 ├── coverage_history.json    # Test coverage tracking
 ├── audit.log                # Violations & overrides
+├── config.jsonc             # ROTD configuration (v1.3.5+)
 └── coordination/            # Multi-agent support (v1.3+)
     ├── active_work_registry.json
     ├── dependency_map.json
